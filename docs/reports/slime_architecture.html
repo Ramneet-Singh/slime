@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>slime — Repository Structure & Module Interaction Report</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #161b22;
+    --panel-2: #1c2230;
+    --border: #2a3140;
+    --text: #e6edf3;
+    --muted: #8b95a7;
+    --accent: #58a6ff;
+    --accent-2: #7ee787;
+    --warn: #f0b429;
+    --pink: #ff7b72;
+    --code-bg: #0d1117;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55; }
+  header { padding: 32px 40px; border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #131a24, #0f1419); }
+  header h1 { margin: 0 0 6px; font-size: 28px; }
+  header .sub { color: var(--muted); font-size: 14px; }
+  main { display: grid; grid-template-columns: 260px 1fr; gap: 0; }
+  nav.toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 24px 16px; border-right: 1px solid var(--border); background: var(--panel); }
+  nav.toc h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 0 0 10px; }
+  nav.toc a { display: block; color: var(--text); text-decoration: none; padding: 6px 8px; border-radius: 6px; font-size: 13.5px; }
+  nav.toc a:hover { background: var(--panel-2); color: var(--accent); }
+  article { padding: 36px 48px; max-width: 1100px; }
+  section { margin-bottom: 48px; }
+  h2 { font-size: 22px; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-top: 0; }
+  h3 { color: var(--accent); margin-top: 28px; font-size: 17px; }
+  h4 { color: var(--accent-2); margin-bottom: 6px; font-size: 14.5px; }
+  p, li { font-size: 14.5px; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace; }
+  code { background: var(--panel-2); color: var(--accent-2); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; }
+  pre code { background: none; color: #c9d1d9; padding: 0; font-size: 12.5px; }
+  .filepath { display: inline-block; background: #21262d; color: var(--warn); border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 6px; font-family: ui-monospace, monospace; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin: 12px 0; }
+  .grid { display: grid; gap: 14px; }
+  .grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11.5px;
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); margin-right: 6px; }
+  .pill.accent { color: var(--accent); border-color: #1f6feb; background: #0d2a4a; }
+  .pill.green { color: var(--accent-2); border-color: #2d5d3a; background: #0f2b1a; }
+  .pill.warn { color: var(--warn); border-color: #5c4a1a; background: #2b220a; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 8px 0; }
+  th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--panel-2); color: var(--accent); font-weight: 600; }
+  .diagram { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;
+    font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.45; white-space: pre; overflow-x: auto; color: #c9d1d9; }
+  .note { background: #16231a; border-left: 3px solid var(--accent-2); padding: 10px 14px; border-radius: 4px; font-size: 13.5px; }
+  .warn-box { background: #251b08; border-left: 3px solid var(--warn); padding: 10px 14px; border-radius: 4px; font-size: 13.5px; }
+  footer { padding: 24px 48px; color: var(--muted); border-top: 1px solid var(--border); font-size: 12.5px; }
+  a { color: var(--accent); }
+  ul.tight li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>slime — Repository Structure &amp; Module Interaction Report</h1>
+  <div class="sub">
+    Generated analysis of <code>Ramneet-Singh/slime</code> · An LLM post-training framework for RL scaling
+    built on <strong>Megatron-LM</strong> (training) + <strong>SGLang</strong> (rollout) + <strong>Ray</strong> (orchestration).
+  </div>
+</header>
+
+<main>
+<nav class="toc">
+  <h3>Contents</h3>
+  <a href="#overview">1. Overview</a>
+  <a href="#toplevel">2. Top-level Layout</a>
+  <a href="#arch">3. High-Level Architecture</a>
+  <a href="#entry">4. Entry Points (train.py / train_async.py)</a>
+  <a href="#ray">5. Ray Orchestration Layer</a>
+  <a href="#rollout">6. Rollout Subsystem</a>
+  <a href="#backends">7. Backends (Megatron + SGLang)</a>
+  <a href="#utils">8. Utilities &amp; Types</a>
+  <a href="#plugins">9. slime_plugins</a>
+  <a href="#examples">10. Examples (tool-based rollouts)</a>
+  <a href="#flow">11. End-to-End Data Flow</a>
+  <a href="#extending">12. Extension Points</a>
+</nav>
+
+<article>
+
+<!-- ====================== OVERVIEW ====================== -->
+<section id="overview">
+<h2>1. Overview</h2>
+<p>
+  <strong>slime</strong> is an SGLang-native, Megatron-backed RL post-training framework. It is the RL stack behind GLM-4.5/4.6/4.7/5/5.1
+  and supports Qwen, DeepSeek-V3 and Llama-3 families. Its design splits cleanly into <em>three</em> logical modules wired together by Ray:
+</p>
+<div class="grid cols-3">
+  <div class="card"><h4>Training</h4><p>Megatron-LM actor (+ optional critic), parameter-synced after each step.</p><span class="pill accent">slime/backends/megatron_utils</span></div>
+  <div class="card"><h4>Rollout</h4><p>SGLang engines behind <code>sglang-router</code>; produce trajectories &amp; rewards.</p><span class="pill green">slime/rollout + slime/backends/sglang_utils</span></div>
+  <div class="card"><h4>Data Buffer</h4><p>Bridge that owns prompts, custom data, generation hooks and feeds training.</p><span class="pill warn">slime/ray/rollout.py (RolloutManager)</span></div>
+</div>
+<div class="note" style="margin-top:14px">
+  The framework is intentionally <strong>plug-pointed at the rollout function</strong> — agentic, multi-turn, tool-calling, search, MCP, etc.
+  are all implemented as custom <code>--rollout-function-path</code> modules without touching the training backend.
+</div>
+</section>
+
+<!-- ====================== TOP-LEVEL ====================== -->
+<section id="toplevel">
+<h2>2. Top-level Layout</h2>
+<div class="diagram">slime/
+├── train.py                  # Synchronous train loop (rollout → train → sync weights)
+├── train_async.py            # Fully-async train loop (overlap rollout/train)
+├── slime/                    # Core package
+│   ├── ray/                  # Ray orchestration: actor groups, placement, rollout mgr
+│   ├── rollout/              # Rollout entrypoints, RM hub, filter hub, base types
+│   ├── backends/
+│   │   ├── megatron_utils/   # Megatron actor, loss, weight update, model provider
+│   │   └── sglang_utils/     # SGLang engine wrapper, config, CLI args
+│   └── utils/                # Args, data, types (Sample), ppo, eval cfg, http, ...
+├── slime_plugins/            # Optional plugins (mbridge, megatron_bridge, models, rollout_buffer)
+├── examples/                 # Reference recipes incl. tool-based (retool, search-r1, tau-bench)
+├── tools/                    # Auxiliary scripts (data conversion, eval helpers)
+├── scripts/                  # Launch scripts
+├── docker/                   # Container definitions
+├── docs/                     # MkDocs documentation
+├── tests/                    # Unit / integration tests
+└── pyproject.toml / setup.py / requirements.txt
+</div>
+</section>
+
+<!-- ====================== ARCH ====================== -->
+<section id="arch">
+<h2>3. High-Level Architecture</h2>
+<p>The three modules communicate through Ray object references. The <em>RolloutManager</em> is the central scheduler that owns the SGLang engines and the data buffer, and exposes async-style methods (<code>generate</code>, <code>eval</code>, <code>onload_weights</code>, …) called by the training driver.</p>
+<div class="diagram">
+                    ┌──────────────────────────────────────────────────────┐
+                    │                       train.py                        │
+                    │  (creates placement groups, drives the train loop)    │
+                    └──────────────┬──────────────────────────┬─────────────┘
+                                   │                          │
+                  ray.remote calls │                          │ ray.remote calls
+                                   ▼                          ▼
+            ┌──────────────────────────────┐   ┌────────────────────────────────┐
+            │      RolloutManager          │   │    RayTrainGroup (Actor/Critic)│
+            │  slime/ray/rollout.py        │   │    slime/ray/actor_group.py    │
+            │                              │   │                                │
+            │ ┌──────────────────────────┐ │   │  ┌──────────────────────────┐  │
+            │ │ ServerGroup ×N           │ │   │  │ MegatronTrainRayActor    │  │
+            │ │  └─ SGLangEngine actors  │ │   │  │ slime/backends/megatron_ │  │
+            │ │    + sglang_router       │ │   │  │   utils/actor.py         │  │
+            │ └──────────────────────────┘ │   │  └──────────────────────────┘  │
+            │                              │   │                                │
+            │  - load prompts (Dataset)    │   │  - forward / loss / step       │
+            │  - call rollout fn           │   │  - save_model / update_weights │
+            │  - reward (rm_hub) + filter  │   │                                │
+            │  - return data refs          │   │                                │
+            └──────────────┬───────────────┘   └───────────┬────────────────────┘
+                           │                                │
+                           │  Sample objects (tokens,       │  Weight refs
+                           │  loss_mask, reward, …)         │  (NCCL / disk)
+                           └────────────────┬───────────────┘
+                                            ▼
+                                Param sync via update_weight/
+                                (NCCL broadcast or disk)
+</div>
+<p class="note">
+  Architecture image: <code>imgs/arch.png</code>. The README summarises modules as: training (Megatron), rollout (SGLang + router), data buffer.
+</p>
+</section>
+
+<!-- ====================== ENTRY ====================== -->
+<section id="entry">
+<h2>4. Entry Points</h2>
+
+<h3>4.1 <code>train.py</code> — synchronous loop</h3>
+<div class="filepath">/train.py</div>
+<pre><code>def train(args):
+    configure_logger()
+    pgs = create_placement_groups(args)                                 # 1. GPU allocation
+    init_tracking(args)
+
+    rollout_manager, num_rollout_per_epoch = create_rollout_manager(    # 2. Bring up SGLang
+        args, pgs["rollout"])
+
+    router_addr = ray.get(rollout_manager.get_metrics_router_addr.remote())
+    update_tracking_open_metrics(args, router_addr)
+
+    actor_model, critic_model = create_training_models(                  # 3. Build Megatron actors
+        args, pgs, rollout_manager)
+
+    actor_model.update_weights()                                         # 4. Push weights to rollout
+
+    for rollout_id in range(args.start_rollout_id, args.num_rollout):    # 5. Train loop
+        rollout_data_ref = ray.get(rollout_manager.generate.remote(rollout_id))
+        ray.get(actor_model.async_train(rollout_id, rollout_data_ref))
+        ...
+        actor_model.update_weights()                                     # sync each step
+        if should_run_periodic_action(rollout_id, args.eval_interval, ...):
+            ray.get(rollout_manager.eval.remote(rollout_id))
+</code></pre>
+<p>
+  The loop is deliberately small: <em>generate → train → sync weights → (optional) eval</em>. Critic, offloading, and save are interleaved
+  via flags (<code>--use-critic</code>, <code>--offload-rollout</code>, <code>--offload-train</code>, <code>--save-interval</code>).
+</p>
+
+<h3>4.2 <code>train_async.py</code> — fully async loop</h3>
+<p>
+  Used by the <em>fully async</em> example (<code>examples/fully_async/</code>). Rollout and train run concurrently with a configurable
+  staleness budget; weight sync is overlapped with the next generation step (similar in spirit to Relax/DCS).
+</p>
+</section>
+
+<!-- ====================== RAY ====================== -->
+<section id="ray">
+<h2>5. Ray Orchestration Layer (<code>slime/ray/</code>)</h2>
+<table>
+  <tr><th>File</th><th>Responsibility</th></tr>
+  <tr><td><code>placement_group.py</code></td><td><code>create_placement_groups</code>, <code>create_rollout_manager</code>, <code>create_training_models</code>; sorts GPUs by node/IP for deterministic locality (<code>sort_key</code>).</td></tr>
+  <tr><td><code>actor_group.py</code></td><td><code>RayTrainGroup</code>: pool of GPU-bound training actors (Megatron). Methods that start with <code>async_</code> return <code>list[ObjectRef]</code>.</td></tr>
+  <tr><td><code>rollout.py</code></td><td><code>RolloutManager</code> + <code>ServerGroup</code>: spins up SGLang engines, owns the prompt <code>Dataset</code>, dispatches rollout functions, performs reward &amp; filter hooks, and yields <code>Sample</code> lists to training.</td></tr>
+  <tr><td><code>train_actor.py</code></td><td>Base Ray actor for training; routes to Megatron backend.</td></tr>
+  <tr><td><code>ray_actor.py</code> / <code>utils.py</code></td><td>Common helpers: env scrubbing (<code>NOSET_VISIBLE_DEVICES_ENV_VARS_LIST</code>), distributed <code>Lock</code>, etc.</td></tr>
+</table>
+
+<h4>Placement group creation</h4>
+<div class="filepath">slime/ray/placement_group.py</div>
+<pre><code>def _create_placement_group(num_gpus):
+    bundles = [{"GPU": 1, "CPU": 1} for _ in range(num_gpus)]
+    pg = placement_group(bundles, strategy="PACK")
+    ray.get(pg.ready())
+    # use InfoActor to discover IP + GPU id of each bundle
+    ...
+    return pg, reordered_bundle_indices, reordered_gpu_ids
+</code></pre>
+
+<h4>ServerGroup — homogeneous group of SGLang engines</h4>
+<div class="filepath">slime/ray/rollout.py</div>
+<pre><code>@dataclasses.dataclass
+class ServerGroup:
+    args: Any
+    pg: Any                       # (placement_group, bundle_indices, gpu_ids)
+    all_engines: list
+    num_gpus_per_engine: int
+    num_new_engines: int
+    worker_type: str = "regular"  # "regular" | "prefill" | "decode" | "placeholder"
+    rank_offset: int = 0
+    gpu_offset: int = 0
+    needs_offload: bool = False   # True when GPUs overlap with megatron
+    model_path: str | None = None
+    router_ip: str | None = None
+    router_port: int | None = None
+</code></pre>
+<p>
+  A <code>RolloutServer</code> can hold multiple <code>ServerGroup</code>s (e.g. PD-disaggregated prefill vs decode). The same machinery
+  also drives multi-model deployments routed via <code>sglang_model_routers</code>.
+</p>
+</section>
+
+<!-- ====================== ROLLOUT ====================== -->
+<section id="rollout">
+<h2>6. Rollout Subsystem (<code>slime/rollout/</code>)</h2>
+<table>
+  <tr><th>File</th><th>Role</th></tr>
+  <tr><td><code>base_types.py</code></td><td>Output dataclasses + <code>call_rollout_fn</code> dispatch (handles legacy plain-list returns).</td></tr>
+  <tr><td><code>sglang_rollout.py</code></td><td>Default rollout fn — single-turn generation through SGLang router; supports multimodal preprocessing.</td></tr>
+  <tr><td><code>sglang_streaming_rollout.py</code></td><td>Streaming variant.</td></tr>
+  <tr><td><code>fully_async_rollout.py</code></td><td>Async rollout for <code>train_async.py</code>.</td></tr>
+  <tr><td><code>sleep_rollout.py</code></td><td>No-op rollout used for debugging / weight checks.</td></tr>
+  <tr><td><code>sft_rollout.py</code></td><td>Supervised fine-tuning data feeder reused inside the RL loop (e.g. OPD).</td></tr>
+  <tr><td><code>on_policy_distillation.py</code></td><td>OPD-specific rollout producing teacher log-probs.</td></tr>
+  <tr><td><code>rm_hub/</code></td><td>Reward models — math (DAPO &amp; Skywork), F1, GPQA, IF-Bench, DeepScaler, etc.</td></tr>
+  <tr><td><code>filter_hub/</code></td><td>Pluggable filters/dynamic filters with <code>MetricGatherer</code>.</td></tr>
+  <tr><td><code>data_source.py</code></td><td>Prompt iterator abstraction (file / parquet / HF dataset).</td></tr>
+</table>
+
+<h4>Rollout output contract</h4>
+<div class="filepath">slime/rollout/base_types.py</div>
+<pre><code>@dataclass
+class RolloutFnTrainOutput:
+    samples: list[list[Sample]]      # list of groups (for GRPO etc.)
+    metrics: dict[str, Any] = None
+
+@dataclass
+class RolloutFnEvalOutput:
+    data: dict[str, dict[str, Any]]
+    metrics: dict[str, Any] = None
+
+def call_rollout_fn(fn, *args, evaluation: bool, **kwargs):
+    output = fn(*args, **kwargs, evaluation=evaluation)
+    if not isinstance(output, (RolloutFnTrainOutput, RolloutFnEvalOutput)):
+        output = RolloutFnEvalOutput(data=output) if evaluation \
+                 else RolloutFnTrainOutput(samples=output)
+    return output
+</code></pre>
+
+<h4>The <code>Sample</code> object — the universal data unit</h4>
+<div class="filepath">slime/utils/types.py</div>
+<pre><code>@dataclass
+class Sample:
+    group_index: int | None = None
+    index: int | None = None
+    prompt: str | list[dict[str, str]] = ""
+    tokens: list[int] = field(default_factory=list)
+    multimodal_inputs: dict | None = None
+    multimodal_train_inputs: dict | None = None
+    response: str = ""
+    response_length: int = 0
+    label: str | None = None
+    reward: float | dict | None = None
+    loss_mask: list[int] | None = None
+    rollout_log_probs: list[float] | None = None
+    rollout_routed_experts: list[list[int]] | None = None
+    remove_sample: bool = False
+    teacher_log_probs: list[float] | None = None
+    class Status(Enum):
+        PENDING = "pending"; COMPLETED = "completed"; TRUNCATED = "truncated"
+        ABORTED = "aborted"; FAILED = "failed"
+    status: Status = Status.PENDING
+    metadata: dict = field(default_factory=dict)
+    generate_function_path: str | None = None
+    train_metadata: dict | None = None
+    session_id: str | None = None
+    non_generation_time: float = 0.0
+</code></pre>
+<p>
+  All custom rollout functions (search-R1, ReTool, τ-bench, MCP, etc.) build <code>Sample</code> objects and return them via the
+  output dataclasses above. <code>loss_mask</code> is critical for tool-based training: only model-generated tokens are scored.
+</p>
+</section>
+
+<!-- ====================== BACKENDS ====================== -->
+<section id="backends">
+<h2>7. Backends</h2>
+
+<h3>7.1 Megatron (<code>slime/backends/megatron_utils/</code>)</h3>
+<table>
+  <tr><th>File</th><th>Role</th></tr>
+  <tr><td><code>actor.py</code></td><td><code>MegatronTrainRayActor</code> — forward/backward/optimizer, called via <code>async_train</code>.</td></tr>
+  <tr><td><code>model.py</code> / <code>model_provider.py</code></td><td>Build Megatron model from HF config; bridges in <code>slime_plugins/mbridge</code>.</td></tr>
+  <tr><td><code>loss.py</code></td><td>PPO / GRPO / DPO / OPD losses; respects <code>Sample.loss_mask</code>.</td></tr>
+  <tr><td><code>data.py</code></td><td>Tokenized batch packing / sequence-length balancing.</td></tr>
+  <tr><td><code>update_weight/</code></td><td>NCCL broadcast or shared-disk weight transfer to SGLang.</td></tr>
+  <tr><td><code>checkpoint.py</code> / <code>megatron_to_hf/</code></td><td>Save loop &amp; conversion to HF format.</td></tr>
+  <tr><td><code>kernels/</code></td><td>Custom CUDA kernels (e.g. fused ops).</td></tr>
+  <tr><td><code>megatron_patch/</code></td><td>In-tree patches for upstream Megatron-LM.</td></tr>
+</table>
+
+<h3>7.2 SGLang (<code>slime/backends/sglang_utils/</code>)</h3>
+<ul class="tight">
+  <li><code>sglang_engine.py</code> — Ray-wrapped <code>SGLangEngine</code> with <code>init()</code>, <code>generate()</code>, <code>release_memory_occupation()</code>, weight-update RPCs.</li>
+  <li><code>sglang_config.py</code> — <code>ModelConfig</code>, <code>ServerGroupConfig</code>, <code>SglangConfig</code> dataclasses.</li>
+  <li><code>arguments.py</code> — CLI parser; all SGLang flags must be prefixed <code>--sglang-…</code>.</li>
+</ul>
+
+<h4>Engine startup &amp; placement</h4>
+<div class="filepath">slime/ray/rollout.py — ServerGroup.start_engines</div>
+<pre><code>RolloutRayActor = ray.remote(SGLangEngine)
+for i in range(len(self.all_engines)):
+    gpu_index   = self.gpu_offset + i * num_gpu_per_engine
+    base_gpu_id = int(reordered_gpu_ids[gpu_index])
+    scheduling_strategy = PlacementGroupSchedulingStrategy(
+        placement_group=pg,
+        placement_group_capture_child_tasks=True,
+        placement_group_bundle_index=reordered_bundle_indices[gpu_index],
+    )
+    env_vars = {... SGLANG_*  flags ...}
+    rollout_engine = RolloutRayActor.options(
+        num_cpus=num_cpus, num_gpus=num_gpus,
+        scheduling_strategy=scheduling_strategy,
+        runtime_env={ "env_vars": env_vars },
+    ).remote(...)
+</code></pre>
+</section>
+
+<!-- ====================== UTILS ====================== -->
+<section id="utils">
+<h2>8. Utilities &amp; Types (<code>slime/utils/</code>)</h2>
+<div class="grid cols-2">
+  <div class="card">
+    <h4>Argument plumbing</h4>
+    <p><code>arguments.py</code> wraps Megatron's parser and injects slime + SGLang flags. <code>get_slime_extra_args_provider</code> registers cluster, rollout, training, eval, profiling sub-parsers.</p>
+  </div>
+  <div class="card">
+    <h4>Data &amp; types</h4>
+    <p><code>data.py</code> reads JSONL / Parquet prompt sets, builds <code>Dataset</code>. <code>types.py</code> defines <code>Sample</code>, <code>MultimodalTypes</code>, and serialisation helpers.</p>
+  </div>
+  <div class="card">
+    <h4>RL math</h4>
+    <p><code>ppo_utils.py</code> — advantage / KL / loss helpers shared by Megatron actor.</p>
+  </div>
+  <div class="card">
+    <h4>Eval config</h4>
+    <p><code>eval_config.py</code> — <code>EvalDatasetConfig</code>, per-dataset rollout overrides, builds list from <code>--eval-config</code> YAML.</p>
+  </div>
+  <div class="card">
+    <h4>Infra glue</h4>
+    <p><code>http_utils.py</code> (async <code>get</code>/<code>post</code>), <code>async_utils.run</code>, <code>distributed_utils.py</code>, <code>reloadable_process_group.py</code>, <code>health_monitor.py</code>.</p>
+  </div>
+  <div class="card">
+    <h4>Observability</h4>
+    <p><code>logging_utils.py</code> (W&amp;B + open-metrics), <code>tensorboard_utils.py</code>, <code>wandb_utils.py</code>, <code>trace_utils.py</code> (OpenTelemetry-style spans), <code>profile_utils.py</code>.</p>
+  </div>
+</div>
+</section>
+
+<!-- ====================== PLUGINS ====================== -->
+<section id="plugins">
+<h2>9. <code>slime_plugins/</code></h2>
+<ul class="tight">
+  <li><strong>mbridge / megatron_bridge</strong> — model-architecture bridges (HF → Megatron parameter mapping for Qwen, DeepSeek, GLM, Llama).</li>
+  <li><strong>models</strong> — opt-in model definitions, MoE helpers, custom layers.</li>
+  <li><strong>rollout_buffer</strong> — alternate buffer implementations (e.g. for asynchronous &amp; partial-rollout schemes).</li>
+</ul>
+<p>Plugins are not imported by default — they are loaded by <code>load_function</code> when a CLI flag (e.g. <code>--rollout-function-path</code>) names them. Keeping them out-of-core lets external projects (Relax, APRIL, qqr, TritonForge…) ship rollouts without forking slime.</p>
+</section>
+
+<!-- ====================== EXAMPLES ====================== -->
+<section id="examples">
+<h2>10. Reference Examples (especially tool-based)</h2>
+<table>
+  <tr><th>Folder</th><th>What it shows</th></tr>
+  <tr><td><code>examples/retool/</code></td><td>Multi-turn code-interpreter agent. <code>generate_with_retool.py</code> drives a Jinja-templated tool-call loop; <code>tool_sandbox.py</code> exposes a Python sandbox via <code>ToolRegistry</code> with semaphore-throttled concurrency.</td></tr>
+  <tr><td><code>examples/search-r1/</code></td><td>Search-augmented RL. Wraps either a local dense retriever or Google Search behind <code>SEMAPHORE</code>; uses <code>GenerateState</code> from <code>slime.rollout.sglang_rollout</code>.</td></tr>
+  <tr><td><code>examples/tau-bench/</code></td><td>τ-bench tool-calling agents. <code>generate_with_tau.py</code> uses upstream <code>tau_bench.envs.get_env</code>; <code>trainable_agents.py</code> wraps them as slime-trainable agents; converts <code>InteractionResult → Sample</code>.</td></tr>
+  <tr><td><code>examples/multi_agent/</code></td><td>Multi-agent rollouts.</td></tr>
+  <tr><td><code>examples/on_policy_distillation/</code></td><td>OPD recipe (uses <code>slime/rollout/on_policy_distillation.py</code>).</td></tr>
+  <tr><td><code>examples/geo3k_vlm/</code> &amp; <code>geo3k_vlm_multi_turn/</code></td><td>Vision-language multi-turn rollouts (geometry).</td></tr>
+  <tr><td><code>examples/fully_async/</code></td><td>Pairs with <code>train_async.py</code>.</td></tr>
+  <tr><td><code>examples/eval_multi_task/</code></td><td>Per-dataset eval configuration via <code>--eval-config</code>.</td></tr>
+  <tr><td><code>examples/strands_sglang/</code></td><td>Strands-Agents SDK integration.</td></tr>
+  <tr><td><code>examples/train_infer_mismatch_helper/</code></td><td>Diagnostic for train/infer numerics drift.</td></tr>
+</table>
+
+<h4>ReTool tool-call loop (the canonical "tool environment" pattern in slime)</h4>
+<div class="filepath">examples/retool/generate_with_retool.py</div>
+<pre><code>async def generate(args, sample: Sample, sampling_params) -> Sample:
+    state = GenerateState(args)
+    url = f"http://{args.sglang_router_ip}:{args.sglang_router_port}/generate"
+    tool_specs = tool_registry.get_tool_specs()
+    prompt = format_conversation_with_tools(prompt=sample.prompt, tools=tool_specs)
+    prompt_tokens_ids = state.tokenizer(prompt, add_special_tokens=False)["input_ids"]
+    response_token_ids, loss_masks = [], []
+    for turn in range(TOOL_CONFIGS["max_turns"]):
+        ...
+        payload = {"input_ids": current_token_ids,
+                   "sampling_params": per_turn_sampling_params,
+                   "return_logprob": True}
+        resp = await post(url, payload)
+        # parse &lt;code&gt;…&lt;/code&gt; or final answer; if code:
+        async with SEMAPHORE:
+            result = await tool_registry.execute_tool("code_interpreter", {"code": code})
+        # append tool observation tokens with loss_mask=0
+        ...
+    sample.tokens         = prompt_tokens_ids + response_token_ids
+    sample.response       = response
+    sample.response_length = len(response_token_ids)
+    sample.loss_mask      = loss_masks
+    sample.reward         = math_dapo_compute_score(sample.response, sample.label)
+    return sample
+</code></pre>
+<p class="note">This is the pattern that any future tool-environment integration (Harbor, MCP, etc.) needs to follow: assemble multi-turn tokens, set <code>loss_mask=0</code> on environment-generated tokens, return a <code>Sample</code> with reward.</p>
+</section>
+
+<!-- ====================== FLOW ====================== -->
+<section id="flow">
+<h2>11. End-to-End Data Flow</h2>
+<div class="diagram">
+1. Launch
+     train.py / train_async.py
+       └─ parse_args()                         (slime/utils/arguments.py)
+       └─ create_placement_groups(args)        (Ray pgs for actor / rollout / critic)
+       └─ create_rollout_manager(args, pg)     → RolloutManager Ray actor
+            └─ ServerGroup.start_engines()     → N × SGLangEngine + sglang_router
+
+2. Per rollout step (rollout_id = 0 … num_rollout-1)
+   a. rollout_manager.generate.remote(rollout_id)
+        ├─ Dataset → next batch of prompts
+        ├─ call_rollout_fn(args.rollout_function_path or default sglang_rollout)
+        │     ├─ posts to router /generate (single- or multi-turn / tool-call)
+        │     ├─ may call external tools (search, sandbox, MCP, …)
+        │     └─ returns RolloutFnTrainOutput(samples=[[Sample, …], …])
+        ├─ rm_hub.async_rm(...) → fills Sample.reward
+        ├─ filter_hub (optional dynamic filter / dedup / repetition)
+        └─ returns ObjectRef to packed batch tensors
+
+   b. actor_model.async_train(rollout_id, rollout_data_ref)
+        ├─ Megatron forward / loss (PPO / GRPO / DPO / OPD)
+        ├─ optimizer step (+ optional critic step)
+        └─ optional offload_train()
+
+   c. actor_model.update_weights()
+        ├─ Megatron → SGLangEngine via NCCL broadcast (or disk)
+        └─ optional onload/offload of KV cache &amp; weights
+
+   d. (periodic) save() → checkpoint, eval() → rollout_manager.eval.remote()
+
+3. Teardown
+     rollout_manager.dispose.remote()
+     finish_tracking(args)
+</div>
+</section>
+
+<!-- ====================== EXTENDING ====================== -->
+<section id="extending">
+<h2>12. Extension Points (the "official" hooks)</h2>
+<table>
+  <tr><th>Hook</th><th>Where</th><th>Use case</th></tr>
+  <tr><td><code>--rollout-function-path</code></td><td>resolved via <code>slime.utils.misc.load_function</code></td><td>Custom multi-turn / agentic / tool rollouts (search-R1, retool, τ-bench).</td></tr>
+  <tr><td><code>--custom-rm-path</code></td><td>resolved via <code>load_function</code> in <code>rm_hub/__init__.py</code></td><td>Plug a project-specific reward (incl. remote/service rewards).</td></tr>
+  <tr><td><code>--dynamic-filter-path</code> / filter_hub</td><td><code>slime/rollout/filter_hub</code></td><td>Sample-group selection, buffer filtering, per-sample masking.</td></tr>
+  <tr><td><code>--eval-config</code> (YAML)</td><td><code>slime/utils/eval_config.py</code></td><td>Per-dataset eval overrides &amp; multiple eval datasets.</td></tr>
+  <tr><td><code>--sglang-…</code></td><td><code>slime/backends/sglang_utils/arguments.py</code></td><td>Pass any SGLang server flag through.</td></tr>
+  <tr><td>Megatron flags</td><td>parser inherits from Megatron-LM</td><td>TP/PP/CP/DP, optimizer, sequence-parallel, etc.</td></tr>
+  <tr><td><code>slime_plugins/</code></td><td>top-level package</td><td>Out-of-tree model bridges, buffers, hooks.</td></tr>
+</table>
+<p>
+  Because the rollout function gets the full <code>args</code> namespace and direct HTTP access to the SGLang router, almost any agentic
+  environment — including container-based tool environments such as Harbor — can be wired in without touching the training backend.
+  How that wiring would look is the subject of the companion report:
+  <a href="./harbor_integration.html">harbor_integration.html</a>.
+</p>
+</section>
+
+</article>
+</main>
+
+<footer>
+  Report generated for the <code>Ramneet-Singh/slime</code> repository. All code snippets are quoted verbatim from the cited files.
+</footer>
+</body>
+</html>
