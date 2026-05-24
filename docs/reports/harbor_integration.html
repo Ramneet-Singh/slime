@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>slime ↔ Harbor — Integration Report for Agentic RL on Tool-Based Environments</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #161b22;
+    --panel-2: #1c2230;
+    --border: #2a3140;
+    --text: #e6edf3;
+    --muted: #8b95a7;
+    --accent: #58a6ff;
+    --accent-2: #7ee787;
+    --warn: #f0b429;
+    --pink: #ff7b72;
+    --code-bg: #0d1117;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55; }
+  header { padding: 32px 40px; border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #131a24, #0f1419); }
+  header h1 { margin: 0 0 6px; font-size: 26px; }
+  header .sub { color: var(--muted); font-size: 14px; max-width: 1000px; }
+  main { display: grid; grid-template-columns: 280px 1fr; gap: 0; }
+  nav.toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 24px 16px; border-right: 1px solid var(--border); background: var(--panel); }
+  nav.toc h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 0 0 10px; }
+  nav.toc a { display: block; color: var(--text); text-decoration: none; padding: 6px 8px; border-radius: 6px; font-size: 13px; }
+  nav.toc a:hover { background: var(--panel-2); color: var(--accent); }
+  article { padding: 36px 48px; max-width: 1150px; }
+  section { margin-bottom: 48px; }
+  h2 { font-size: 22px; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-top: 0; }
+  h3 { color: var(--accent); margin-top: 26px; font-size: 17px; }
+  h4 { color: var(--accent-2); margin-bottom: 6px; font-size: 14.5px; }
+  p, li { font-size: 14.5px; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace; }
+  code { background: var(--panel-2); color: var(--accent-2); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; }
+  pre code { background: none; color: #c9d1d9; padding: 0; font-size: 12.5px; }
+  .filepath { display: inline-block; background: #21262d; color: var(--warn); border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 6px; font-family: ui-monospace, monospace; }
+  .new { color: var(--accent-2); }
+  .changed { color: var(--warn); }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin: 12px 0; }
+  .grid { display: grid; gap: 14px; }
+  .grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11.5px;
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); margin-right: 6px; }
+  .pill.accent { color: var(--accent); border-color: #1f6feb; background: #0d2a4a; }
+  .pill.green  { color: var(--accent-2); border-color: #2d5d3a; background: #0f2b1a; }
+  .pill.warn   { color: var(--warn); border-color: #5c4a1a; background: #2b220a; }
+  .pill.pink   { color: var(--pink); border-color: #6a2a2a; background: #2a1414; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 8px 0; }
+  th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--panel-2); color: var(--accent); font-weight: 600; }
+  .diagram { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;
+    font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.45; white-space: pre; overflow-x: auto; color: #c9d1d9; }
+  .note { background: #16231a; border-left: 3px solid var(--accent-2); padding: 10px 14px; border-radius: 4px; font-size: 13.5px; }
+  .warn-box { background: #251b08; border-left: 3px solid var(--warn); padding: 10px 14px; border-radius: 4px; font-size: 13.5px; }
+  .badge-step { display: inline-block; min-width: 26px; padding: 2px 8px; border-radius: 6px;
+    background: #0d2a4a; color: var(--accent); font-weight: 700; font-size: 13px; margin-right: 8px; }
+  footer { padding: 24px 48px; color: var(--muted); border-top: 1px solid var(--border); font-size: 12.5px; }
+  a { color: var(--accent); }
+  ul.tight li { margin-bottom: 4px; }
+  .legend span { margin-right: 14px; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>slime ↔ Harbor — Changes Needed to Support Agentic RL on Harbor-Style Tool Environments</h1>
+  <div class="sub">
+    Harbor (<a href="https://github.com/harbor-framework/harbor">harbor-framework/harbor</a>) is a Terminal-Bench-team framework for
+    <em>evaluating and optimizing</em> agents in container-based tool environments and for <em>generating rollouts for RL optimization</em>.
+    This report enumerates the concrete code-level changes needed inside this slime fork to consume Harbor-format tasks/agents/environments
+    and drive multi-turn, tool-using RL training over them.
+  </div>
+</header>
+
+<main>
+<nav class="toc">
+  <h3>Contents</h3>
+  <a href="#harbor">1. What Harbor specifies</a>
+  <a href="#gap">2. Gap analysis vs. slime today</a>
+  <a href="#design">3. Proposed integration design</a>
+  <a href="#changes">4. Detailed change list</a>
+  <a href="#new-files">5. New files / packages</a>
+  <a href="#modified">6. Modified files</a>
+  <a href="#args">7. New CLI arguments</a>
+  <a href="#config">8. Example launch config</a>
+  <a href="#rollout">9. The new rollout function (sketch)</a>
+  <a href="#rewards">10. Rewards (Harbor verifier → slime reward)</a>
+  <a href="#trajectory">11. Trajectory ↔ Sample mapping (ATIF)</a>
+  <a href="#async">12. Async / scaling notes</a>
+  <a href="#caveats">13. Caveats &amp; open questions</a>
+  <a href="#milestones">14. Milestones / phased rollout</a>
+</nav>
+
+<article>
+
+<!-- ====================== 1. HARBOR ====================== -->
+<section id="harbor">
+<h2>1. What Harbor specifies</h2>
+<p>From Harbor's <code>AGENTS.md</code> and <code>README.md</code> (commit on <code>main</code>), the framework is a Python 3.12 monorepo
+exposing a CLI (<code>harbor</code>, built on Typer) with these primitives:</p>
+<table>
+  <tr><th>Concept</th><th>Definition (Harbor)</th><th>What it gives RL training</th></tr>
+  <tr><td><strong>Task</strong></td>
+      <td>Directory with <code>task.toml</code> (config: timeouts, resources, metadata), <code>instruction.md</code> (natural-language goal),
+          <code>environment/</code> (Dockerfile / env definition), <code>tests/</code> (e.g. <code>test.sh</code> that writes a reward to
+          <code>/logs/verifier/reward.txt</code>), optional <code>solution/</code>.</td>
+      <td>Prompt source + verifiable reward + sandboxed execution surface.</td></tr>
+  <tr><td><strong>Agent</strong></td>
+      <td>Subclass of <code>BaseAgent</code> with <code>setup()</code>, <code>run(instruction, environment, context)</code>, and a
+          <code>SUPPORTS_ATIF</code> flag.</td>
+      <td>An "actor" wrapper; for RL we need a <em>trainable</em> agent that calls the slime-hosted policy.</td></tr>
+  <tr><td><strong>Environment</strong></td>
+      <td>Subclass of <code>BaseEnvironment</code> (<code>docker</code>, <code>daytona</code>, <code>e2b</code>, <code>modal</code>,
+          <code>runloop</code>, <code>apple_container</code>, <code>gke</code>, <code>novita</code>).</td>
+      <td>The container/sandbox the agent runs against; tools = shell calls inside.</td></tr>
+  <tr><td><strong>Trial / Job</strong></td>
+      <td>Trial = one agent × one task execution; Job = collection of trials.</td>
+      <td>Maps to one "rollout" / one rollout batch in slime.</td></tr>
+  <tr><td><strong>ATIF trajectory</strong></td>
+      <td>Agent Trajectory Interchange Format — Pydantic models under <code>src/harbor/models/trajectories/</code>.</td>
+      <td>The canonical record of the multi-turn interaction (messages + tool calls + observations).</td></tr>
+  <tr><td><strong>Verifier</strong></td>
+      <td>Reward written by <code>tests/test.sh</code> into <code>/logs/verifier/reward.txt</code> (or <code>reward.json</code>).</td>
+      <td>Per-trajectory scalar reward → directly usable by GRPO/PPO.</td></tr>
+  <tr><td><strong>Adapters</strong></td>
+      <td>Converters in <code>adapters/{benchmark}/</code> that turn external benchmarks (SWE-Bench, Aider, BFCL, GAIA, …) into Harbor tasks.</td>
+      <td>A free pipeline of 50+ tool-environment benchmarks for RL.</td></tr>
+</table>
+
+<div class="note">
+  The CLI surface is <code>harbor run --dataset &lt;name@ver&gt; --agent &lt;agent&gt; --model &lt;model&gt; --n-concurrent N --env &lt;provider&gt;</code>.
+  Harbor explicitly advertises "<em>Generate rollouts for RL optimization</em>" as a first-class feature, so the integration target is well-defined.
+</div>
+</section>
+
+<!-- ====================== 2. GAP ====================== -->
+<section id="gap">
+<h2>2. Gap analysis vs. slime today</h2>
+<p>slime already supports tool-based rollouts (<code>examples/retool/</code>, <code>examples/search-r1/</code>, <code>examples/tau-bench/</code>),
+but every tool environment is bespoke Python that runs in the rollout actor's process. Harbor adds three dimensions slime does not natively model:</p>
+<table>
+  <tr><th>Dimension</th><th>slime today</th><th>Harbor expects</th><th>Gap</th></tr>
+  <tr><td>Environment lifecycle</td>
+      <td>In-process Python (subprocess for ReTool sandbox)</td>
+      <td>Container-backed environment with <code>start/stop/build</code> (docker / daytona / modal / e2b / gke / …)</td>
+      <td><span class="pill pink">Major</span> — need an environment manager that drives Harbor environments.</td></tr>
+  <tr><td>Task model</td>
+      <td>JSONL/parquet prompts with a label string</td>
+      <td>Directory of <code>task.toml</code> + <code>instruction.md</code> + tests; reward is an out-of-band script</td>
+      <td><span class="pill warn">Medium</span> — new data source + new reward path.</td></tr>
+  <tr><td>Agent ↔ model coupling</td>
+      <td>Rollout fn calls SGLang router directly via HTTP</td>
+      <td><code>BaseAgent</code> is an opaque class; runs e.g. Claude Code, OpenHands inside the container, calling an LLM via LiteLLM</td>
+      <td><span class="pill pink">Major</span> — need a "trainable agent" that routes LLM calls back to the slime-hosted SGLang policy and records the trajectory in ATIF.</td></tr>
+  <tr><td>Reward</td>
+      <td>Synchronous Python function in <code>rm_hub/</code> or custom RM URL</td>
+      <td>Verifier script writes <code>/logs/verifier/reward.{txt,json}</code></td>
+      <td><span class="pill warn">Medium</span> — read-from-file adapter.</td></tr>
+  <tr><td>Trajectory format</td>
+      <td><code>Sample</code> with packed <code>tokens</code> + <code>loss_mask</code></td>
+      <td>ATIF Pydantic messages (role, content, tool calls)</td>
+      <td><span class="pill warn">Medium</span> — bidirectional converter, with care around tokenization &amp; loss-mask boundaries.</td></tr>
+  <tr><td>Concurrency / placement</td>
+      <td>Ray actors on GPU placement groups</td>
+      <td><code>--n-concurrent</code> across remote sandboxes (CPU-bound)</td>
+      <td><span class="pill warn">Medium</span> — need a CPU-only Ray pool (or asyncio pool) for environments, decoupled from GPU placement.</td></tr>
+  <tr><td>Multi-turn loss-mask</td>
+      <td>Manual per-turn append (see retool)</td>
+      <td>Implicit in ATIF message sequence</td>
+      <td><span class="pill warn">Medium</span> — generalise retool-style mask construction into a reusable helper.</td></tr>
+</table>
+</section>
+
+<!-- ====================== 3. DESIGN ====================== -->
+<section id="design">
+<h2>3. Proposed integration design</h2>
+<p>Keep slime's core (Ray + Megatron + SGLang) untouched. Introduce a self-contained adapter package, modeled after the existing
+<code>examples/retool/</code> + <code>examples/tau-bench/</code> patterns but promoted into <code>slime_plugins/harbor/</code> so that
+it is loadable via the standard <code>--rollout-function-path</code> / <code>--custom-rm-path</code> hooks.</p>
+
+<div class="diagram">
+            ┌─────────────────────────────────────────────────────────────┐
+            │                    slime training loop                       │
+            │                       (unchanged)                            │
+            └──────────────┬──────────────────────────────┬────────────────┘
+                           │ rollout_manager.generate     │ update_weights
+                           ▼                              ▼
+            ┌──────────────────────────────┐   ┌────────────────────────────┐
+            │ slime_plugins/harbor          │   │  SGLang engines (policy)   │
+            │  ├─ rollout.generate_with_    │◀─▶│  (existing)                │
+            │  │     harbor()               │   └────────────────────────────┘
+            │  ├─ harbor_task_dataset.py    │
+            │  ├─ harbor_agent.py           │   ┌────────────────────────────┐
+            │  │   (TrainableHarborAgent)   │──▶│  Harbor BaseEnvironment    │
+            │  ├─ harbor_env_pool.py        │   │  docker | daytona | modal  │
+            │  ├─ atif_to_sample.py         │   │  | e2b | gke | runloop ... │
+            │  ├─ harbor_reward.py          │◀──│  reads /logs/verifier/...  │
+            │  └─ arguments.py              │   └────────────────────────────┘
+            └──────────────────────────────┘
+</div>
+
+<h3>Key design decisions</h3>
+<ol>
+  <li><strong>Plugin, not core.</strong> Lives under <code>slime_plugins/harbor/</code>; mirrors how <code>mbridge</code>,
+      <code>megatron_bridge</code>, <code>rollout_buffer</code> live today.</li>
+  <li><strong>Harbor SDK as a dependency.</strong> Add <code>harbor</code> (PyPI) to an opt-in extras section in <code>pyproject.toml</code>
+      / <code>requirements-harbor.txt</code>; do not import it from core <code>slime/</code>.</li>
+  <li><strong>Reuse the existing rollout contract.</strong> The new function returns
+      <code>RolloutFnTrainOutput(samples=list[list[Sample]])</code> / <code>RolloutFnEvalOutput(...)</code> — no change to slime's training
+      pipeline.</li>
+  <li><strong>Policy routing.</strong> Harbor agents speak LiteLLM. Provide a tiny LiteLLM-compatible adapter that points at the SGLang
+      router (<code>http://{sglang_router_ip}:{sglang_router_port}/v1</code>) so any Harbor agent that uses the OpenAI-compatible
+      interface (<code>openhands-sdk</code>, <code>mini-swe-agent</code>, <code>aider</code>, etc.) can be driven by the slime policy
+      with no Harbor-side code change.</li>
+  <li><strong>Trajectory capture.</strong> Subclass <code>BaseAgent</code> with <code>SUPPORTS_ATIF = True</code>; consume the recorded
+      ATIF trajectory at the end of the trial, then tokenize + build <code>loss_mask</code>.</li>
+  <li><strong>Two execution modes.</strong>
+      <ul class="tight">
+        <li><strong>Mode A — "Harbor-driven":</strong> a CPU Ray pool runs Harbor trials; each trial logs prompts/completions; slime collects them after-the-fact.</li>
+        <li><strong>Mode B — "slime-driven":</strong> the rollout function emulates the agent loop in process (à la <code>generate_with_retool</code>) but uses Harbor's environment as the tool sandbox (mount task, exec commands, run tests). Cleaner for token-level loss-mask control.</li>
+      </ul>
+      We recommend implementing <strong>Mode B first</strong> (lower risk, full per-token control) and adding Mode A later for evaluating
+      third-party agents.</li>
+  <li><strong>Async + concurrency.</strong> Use <code>asyncio.TaskGroup</code> over Harbor environments (Harbor itself is asyncio-native),
+      gated by a <code>--harbor-concurrency</code> semaphore. The existing async-rollout machinery
+      (<code>slime/rollout/fully_async_rollout.py</code> + <code>train_async.py</code>) is the right substrate.</li>
+</ol>
+</section>
+
+<!-- ====================== 4. CHANGES ====================== -->
+<section id="changes">
+<h2>4. Detailed change list</h2>
+
+<h3>4.1 Summary table</h3>
+<table>
+  <tr><th>Kind</th><th>Path</th><th>Purpose</th></tr>
+  <tr><td><span class="pill green">NEW</span></td><td><code>slime_plugins/harbor/__init__.py</code></td><td>Package marker.</td></tr>
+  <tr><td><span class="pill green">NEW</span></td><td><code>slime_plugins/harbor/arguments.py</code></td><td>Add <code>--harbor-*</code> CLI args via <code>add_custom_arguments</code>.</td></tr>
+  <tr><td><span class="pill green">NEW</span></td><td><code>slime_plugins/harbor/harbor_task_dataset.py</code></td><td>Iterate Harbor tasks (datasets / local paths) and yield <code>Sample</code> seeds.</td></tr>
+  <tr><td><span class="pill green">NEW</span></td><td><code>slime_plugins/harbor/harbor_env_pool.py</code></td><td>Manage a pool of <code>BaseEnvironment</code> instances (<code>start</code>/<code>exec</code>/<code>stop</code>) with concurrency limits.</td></tr>
+  <tr><td><span class="pill green">NEW</span></td><td><code>slime_plugins/harbor/litellm_to_sglang.py</code></td><td>OpenAI-compatible shim routing model calls to the slime SGLang router.</td></tr>
+  <tr><td><span class="pill green">NEW</span></td><td><code>slime_plugins/harbor/harbor_agent.py</code></td><td><code>TrainableHarborAgent(BaseAgent)</code> with ATIF logging.</td></tr>
+  <tr><td><span class="pill green">NEW</span></td><td><code>slime_plugins/harbor/atif_to_sample.py</code></td><td>Convert ATIF trajectory → tokens + <code>loss_mask</code> + reward → <code>Sample</code>.</td></tr>
+  <tr><td><span class="pill green">NEW</span></td><td><code>slime_plugins/harbor/harbor_reward.py</code></td><td>Read <code>/logs/verifier/reward.{txt,json}</code>; normalise to scalar; optional shaping.</td></tr>
+  <tr><td><span class="pill green">NEW</span></td><td><code>slime_plugins/harbor/rollout.py</code></td><td>The <code>generate_with_harbor()</code> function (this is what <code>--rollout-function-path</code> points to).</td></tr>
+  <tr><td><span class="pill green">NEW</span></td><td><code>slime_plugins/harbor/README.md</code></td><td>How to install Harbor extras + run end-to-end.</td></tr>
+  <tr><td><span class="pill green">NEW</span></td><td><code>examples/harbor/run_qwen3_4B_terminalbench.sh</code></td><td>Reference launch script.</td></tr>
+  <tr><td><span class="pill green">NEW</span></td><td><code>examples/harbor/README.md</code></td><td>Quick start.</td></tr>
+  <tr><td><span class="pill green">NEW</span></td><td><code>requirements-harbor.txt</code></td><td>Pinned Harbor + Docker SDK deps.</td></tr>
+  <tr><td><span class="pill green">NEW</span></td><td><code>tests/test_harbor_plugin.py</code></td><td>Unit tests: ATIF→Sample, reward parsing, dataset enumeration (mocking Harbor).</td></tr>
+  <tr><td><span class="pill warn">MOD</span></td><td><code>slime/utils/types.py</code></td><td>Extend <code>Sample.metadata</code> usage / add optional <code>tool_calls</code> field if needed (or just stuff into <code>metadata</code>).</td></tr>
+  <tr><td><span class="pill warn">MOD</span></td><td><code>slime/utils/data.py</code></td><td>Allow <code>Dataset</code> to consume a custom <em>data source</em> object (so Harbor task iterator can replace JSONL/parquet).</td></tr>
+  <tr><td><span class="pill warn">MOD</span></td><td><code>slime/utils/arguments.py</code></td><td>Register harbor sub-parser via <code>add_custom_arguments</code> (already supported — no signature change).</td></tr>
+  <tr><td><span class="pill warn">MOD</span></td><td><code>slime/rollout/rm_hub/__init__.py</code></td><td>Allow <code>--custom-rm-path</code> to be async and to receive the env handle (so Harbor verifier can run inside the container). Most likely a 1-line guard; already extensible by design.</td></tr>
+  <tr><td><span class="pill warn">MOD</span></td><td><code>slime/ray/placement_group.py</code></td><td>Optionally provision a CPU-only placement group (<code>"harbor"</code>) when <code>--harbor-num-cpu-workers</code> &gt; 0, so env containers don't fight GPUs.</td></tr>
+  <tr><td><span class="pill warn">MOD</span></td><td><code>docs/en/get_started/usage.md</code></td><td>Document Harbor integration.</td></tr>
+  <tr><td><span class="pill warn">MOD</span></td><td><code>README.md</code></td><td>Add an "Agentic RL on Harbor tasks" bullet under examples.</td></tr>
+</table>
+
+<h3>4.2 What stays untouched</h3>
+<ul class="tight">
+  <li><code>train.py</code> / <code>train_async.py</code> — no signature changes.</li>
+  <li><code>slime/backends/megatron_utils/</code> — no changes; the loss already supports per-token <code>loss_mask</code>.</li>
+  <li><code>slime/backends/sglang_utils/</code> — already exposes an OpenAI-compatible endpoint via <code>sglang-router</code>.</li>
+  <li><code>slime/ray/rollout.py</code> — the <code>RolloutManager</code> contract (<code>generate</code>, <code>eval</code>) is preserved.</li>
+</ul>
+</section>
+
+<!-- ====================== 5. NEW FILES ====================== -->
+<section id="new-files">
+<h2>5. New files / packages (with responsibilities)</h2>
+
+<div class="card">
+<h4><span class="badge-step">A</span><code>slime_plugins/harbor/harbor_task_dataset.py</code></h4>
+<p>Wraps Harbor's task discovery (CLI: <code>harbor datasets list</code>; SDK: <code>harbor.dataset</code> /
+<code>harbor.registry</code>) and exposes an iterator of seed <code>Sample</code> objects whose <code>prompt</code> is
+<code>instruction.md</code>, whose <code>label</code> stores the task path / id, and whose <code>metadata</code> carries the
+task descriptor (timeouts, environment image, expected resources). This object is the value plugged into
+<code>--prompt-data</code> via a small custom data-source loader.</p>
+</div>
+
+<div class="card">
+<h4><span class="badge-step">B</span><code>slime_plugins/harbor/harbor_env_pool.py</code></h4>
+<p>Owns a pool of Harbor environments per concurrent rollout slot:</p>
+<ul class="tight">
+  <li><code>acquire(task) → env</code> — build/start container (Docker / Daytona / Modal / …); supports prebuilt cache.</li>
+  <li><code>exec(env, cmd) → stdout/stderr/exit_code</code> — generic tool surface.</li>
+  <li><code>run_verifier(env) → reward</code> — runs <code>tests/test.sh</code>, reads <code>/logs/verifier/reward.{txt,json}</code>.</li>
+  <li><code>release(env, delete=True)</code> — stop and reclaim.</li>
+</ul>
+<p>Backed by <code>asyncio.Semaphore</code>; respects <code>--harbor-concurrency</code> and <code>--harbor-env-provider</code>.</p>
+</div>
+
+<div class="card">
+<h4><span class="badge-step">C</span><code>slime_plugins/harbor/litellm_to_sglang.py</code></h4>
+<p>Thin OpenAI-compatible HTTP server (or an in-process LiteLLM custom provider) that exposes
+<code>POST /v1/chat/completions</code> backed by the slime SGLang router. Run as a sidecar in each rollout worker.
+This makes <em>off-the-shelf</em> Harbor agents (<code>openhands-sdk</code>, <code>aider</code>, <code>mini-swe-agent</code>, …)
+talk to the trainable policy without modification — they already speak LiteLLM.</p>
+</div>
+
+<div class="card">
+<h4><span class="badge-step">D</span><code>slime_plugins/harbor/harbor_agent.py</code></h4>
+<p><code>class TrainableHarborAgent(BaseAgent)</code> with <code>SUPPORTS_ATIF = True</code>.
+Its <code>run()</code> drives a multi-turn loop: read instruction → call the SGLang policy directly (capturing token ids and
+log-probs) → parse tool calls → exec via the Harbor environment → append observation → repeat. Crucially, it records
+both (i) the canonical ATIF messages (for Harbor) and (ii) the slime-side <em>per-turn</em> token ids and assistant/tool-token
+boundaries needed for the loss mask.</p>
+</div>
+
+<div class="card">
+<h4><span class="badge-step">E</span><code>slime_plugins/harbor/atif_to_sample.py</code></h4>
+<p>Pure function: <code>atif_trajectory + tokenizer + reward → Sample</code>. Mirrors the loss-mask construction in
+<code>examples/retool/generate_with_retool.py</code> (assistant tokens → mask 1; system / user / tool-observation tokens →
+mask 0). Stores the original ATIF blob in <code>sample.metadata["atif"]</code> for downstream debugging.</p>
+</div>
+
+<div class="card">
+<h4><span class="badge-step">F</span><code>slime_plugins/harbor/harbor_reward.py</code></h4>
+<p>Tries <code>/logs/verifier/reward.json</code> first, then <code>reward.txt</code>; supports scalar, dict
+(<code>{"reward": 1.0, "breakdown": {...}}</code>), and optionally accepts a user-supplied shaper
+(<code>--harbor-reward-shaper-path</code>). Returns a <code>float</code> or a dict that slime PPO/GRPO already understands
+(<code>Sample.reward</code> is typed <code>float | dict | None</code>).</p>
+</div>
+
+<div class="card">
+<h4><span class="badge-step">G</span><code>slime_plugins/harbor/rollout.py</code></h4>
+<p>The entry point: <code>async def generate(args, sample: Sample, sampling_params) -&gt; Sample</code> and a batch-level
+<code>def generate_rollout(args, rollout_id, data_buffer, evaluation: bool=False) -&gt; RolloutFnTrainOutput</code>.
+Performs: acquire env → invoke TrainableHarborAgent → atif_to_sample → run_verifier → release env → return sample(s) grouped
+for GRPO (one task ⇒ N rollouts grouped by <code>group_index</code>).</p>
+</div>
+</section>
+
+<!-- ====================== 6. MODIFIED ====================== -->
+<section id="modified">
+<h2>6. Modified files (surgical changes)</h2>
+
+<h3>6.1 <code>slime/utils/data.py</code></h3>
+<p>Today, <code>Dataset</code> reads <code>jsonl</code> / <code>parquet</code> files. Add a thin extension point: if
+<code>args.prompt_data</code> begins with <code>harbor://</code>, defer to the harbor task dataset iterator. Implementation
+is ≈20 lines and avoids importing Harbor unless the prefix is used.</p>
+
+<h3>6.2 <code>slime/utils/arguments.py</code></h3>
+<p>No new code paths needed — slime already calls <code>add_custom_arguments(parser)</code>. The new harbor flags live in
+<code>slime_plugins/harbor/arguments.py</code> and are wired in at launch via:</p>
+<pre><code>--custom-arguments-path slime_plugins.harbor.arguments:register</code></pre>
+
+<h3>6.3 <code>slime/rollout/rm_hub/__init__.py</code></h3>
+<p>Ensure <code>async_rm</code> tolerates a None reward (the Harbor rollout fn fills <code>sample.reward</code> itself).
+Most likely already the case — just add a guard + test.</p>
+
+<h3>6.4 <code>slime/ray/placement_group.py</code></h3>
+<p>Add an optional <code>"harbor"</code> placement group with <code>num_cpus &gt;= N, num_gpus = 0</code> when
+<code>args.harbor_num_cpu_workers &gt; 0</code>. Used by <code>harbor_env_pool.py</code> to schedule env containers on
+nodes that have spare CPU but no policy GPU pressure.</p>
+
+<h3>6.5 <code>slime/utils/types.py</code></h3>
+<p>Optional: add <code>tool_calls: list | None = None</code> to <code>Sample</code> for first-class structured tool-call
+storage. If we'd rather not touch core types, store under <code>metadata["tool_calls"]</code>.</p>
+</section>
+
+<!-- ====================== 7. ARGS ====================== -->
+<section id="args">
+<h2>7. New CLI arguments (all live under <code>--harbor-*</code>)</h2>
+<table>
+  <tr><th>Flag</th><th>Type</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>--harbor-dataset</code></td><td>str</td><td>—</td><td>Harbor dataset spec, e.g. <code>terminal-bench@2.0</code> or local path.</td></tr>
+  <tr><td><code>--harbor-task-split</code></td><td>str</td><td>train</td><td>train / dev / test.</td></tr>
+  <tr><td><code>--harbor-env-provider</code></td><td>str</td><td>docker</td><td>docker | daytona | modal | e2b | runloop | gke | novita | apple_container.</td></tr>
+  <tr><td><code>--harbor-agent</code></td><td>str</td><td>trainable-policy</td><td>Built-in <code>TrainableHarborAgent</code>, or any Harbor agent name for Mode A.</td></tr>
+  <tr><td><code>--harbor-concurrency</code></td><td>int</td><td>16</td><td>Max simultaneous environments.</td></tr>
+  <tr><td><code>--harbor-max-turns</code></td><td>int</td><td>32</td><td>Hard cap on assistant turns per trial.</td></tr>
+  <tr><td><code>--harbor-trial-timeout-sec</code></td><td>int</td><td>1800</td><td>Per-trial wall-clock budget.</td></tr>
+  <tr><td><code>--harbor-rollouts-per-task</code></td><td>int</td><td>8</td><td>Group size for GRPO (n rollouts of the same task).</td></tr>
+  <tr><td><code>--harbor-reward-shaper-path</code></td><td>str</td><td>None</td><td>Optional <code>module:fn</code> applied to raw verifier reward.</td></tr>
+  <tr><td><code>--harbor-cache-built-envs</code></td><td>bool</td><td>True</td><td>Reuse warm containers across trials.</td></tr>
+  <tr><td><code>--harbor-trajectory-log-dir</code></td><td>str</td><td>None</td><td>Where to dump ATIF for debugging.</td></tr>
+  <tr><td><code>--harbor-num-cpu-workers</code></td><td>int</td><td>0</td><td>If &gt;0, allocate a separate Ray CPU placement group for env containers.</td></tr>
+  <tr><td><code>--harbor-tool-allowlist</code></td><td>str (csv)</td><td>shell,file,python</td><td>Logical tools exposed to the agent.</td></tr>
+</table>
+</section>
+
+<!-- ====================== 8. CONFIG ====================== -->
+<section id="config">
+<h2>8. Example launch (sketch)</h2>
+<div class="filepath">examples/harbor/run_qwen3_4B_terminalbench.sh</div>
+<pre><code>python train.py \
+  --actor-num-nodes 1 --actor-num-gpus-per-node 8 \
+  --rollout-num-gpus 4 --rollout-num-gpus-per-engine 2 \
+  --hf-checkpoint Qwen/Qwen3-4B \
+  --tensor-model-parallel-size 2 --pipeline-model-parallel-size 1 \
+  --max-tokens-per-gpu 8192 --rollout-max-context-len 16384 \
+  \
+  --custom-arguments-path slime_plugins.harbor.arguments:register \
+  --rollout-function-path slime_plugins.harbor.rollout:generate_rollout \
+  --custom-rm-path        slime_plugins.harbor.harbor_reward:score \
+  --prompt-data           "harbor://terminal-bench@2.0" \
+  \
+  --harbor-env-provider   docker \
+  --harbor-concurrency    32 \
+  --harbor-max-turns      32 \
+  --harbor-rollouts-per-task 8 \
+  --harbor-num-cpu-workers 32 \
+  --harbor-trial-timeout-sec 1800 \
+  --harbor-trajectory-log-dir ./atif_logs \
+  \
+  --use-grpo --rollout-batch-size 64 --num-rollout 500 \
+  --eval-interval 25 --save-interval 50
+</code></pre>
+</section>
+
+<!-- ====================== 9. ROLLOUT FN ====================== -->
+<section id="rollout">
+<h2>9. The new rollout function (sketch)</h2>
+<p>Modeled on <code>examples/retool/generate_with_retool.py</code>:</p>
+<div class="filepath">slime_plugins/harbor/rollout.py (proposed)</div>
+<pre><code>async def _one_trial(args, task_sample, sampling_params, env_pool, sglang_url, tokenizer):
+    async with env_pool.acquire(task_sample.metadata["task"]) as env:
+        await env.start(force_build=False)
+
+        agent = TrainableHarborAgent(
+            sglang_url=sglang_url,
+            tokenizer=tokenizer,
+            max_turns=args.harbor_max_turns,
+            sampling_params=sampling_params,
+            tool_allowlist=args.harbor_tool_allowlist,
+        )
+        await agent.setup(env)
+        await agent.run(
+            instruction=task_sample.prompt,
+            environment=env,
+            context=AgentContext(...),
+        )
+
+        raw_reward = await env_pool.run_verifier(env)
+        reward     = harbor_reward.shape(raw_reward, args)
+
+        sample = atif_to_sample(
+            atif=agent.trajectory,
+            tokenizer=tokenizer,
+            reward=reward,
+            seed=task_sample,
+        )
+        return sample
+
+async def generate_rollout(args, rollout_id, data_buffer, *, evaluation=False):
+    sglang_url = f"http://{args.sglang_router_ip}:{args.sglang_router_port}/generate"
+    env_pool   = HarborEnvPool(args)            # built once, reused across calls
+    tokenizer  = load_tokenizer(args)
+    sem = asyncio.Semaphore(args.harbor_concurrency)
+
+    async def run_group(task_sample):
+        async with sem:
+            # GRPO: n rollouts per task, share the same env image (warm cache)
+            samples = await asyncio.gather(*[
+                _one_trial(args, task_sample, sampling_params, env_pool, sglang_url, tokenizer)
+                for _ in range(args.harbor_rollouts_per_task)
+            ])
+            for i, s in enumerate(samples):
+                s.group_index = task_sample.index
+                s.index       = i
+            return samples
+
+    task_batch = data_buffer.next_batch(args.rollout_batch_size)
+    grouped    = await asyncio.gather(*[run_group(t) for t in task_batch])
+
+    if evaluation:
+        return RolloutFnEvalOutput(data={t.label: {"reward": np.mean([s.reward for s in g])}
+                                          for t, g in zip(task_batch, grouped)})
+    return RolloutFnTrainOutput(samples=grouped, metrics=_harbor_metrics(grouped))
+</code></pre>
+</section>
+
+<!-- ====================== 10. REWARDS ====================== -->
+<section id="rewards">
+<h2>10. Rewards — Harbor verifier → slime reward</h2>
+<p>Harbor's contract: the verifier writes a reward file inside the container after the agent finishes. Concretely
+<code>/logs/verifier/reward.txt</code> (a single number) or <code>/logs/verifier/reward.json</code> (object with at
+least a <code>reward</code> key and optional breakdown). Our reader:</p>
+<pre><code>async def read_reward(env) -&gt; float | dict:
+    try:
+        raw = await env.read_file("/logs/verifier/reward.json")
+        obj = json.loads(raw)
+        return obj if isinstance(obj, dict) else float(obj)
+    except FileNotFoundError:
+        raw = await env.read_file("/logs/verifier/reward.txt")
+        return float(raw.strip())
+    except Exception as e:
+        logger.warning("Harbor verifier reward unavailable: %s", e)
+        return 0.0
+</code></pre>
+<p>The returned value flows into <code>Sample.reward</code> directly (slime PPO/GRPO already supports both
+<code>float</code> and <code>dict</code> rewards — see <code>slime/utils/types.py</code>).</p>
+</section>
+
+<!-- ====================== 11. TRAJECTORY ====================== -->
+<section id="trajectory">
+<h2>11. ATIF trajectory ↔ slime <code>Sample</code> mapping</h2>
+<p>The key invariant for RL is: <em>only tokens that the trainable policy emitted contribute to the loss</em>.
+ATIF makes this explicit because each message carries its role. The conversion rule is:</p>
+<table>
+  <tr><th>ATIF message role</th><th>Tokenized contribution</th><th>loss_mask</th></tr>
+  <tr><td>system</td><td>chat template wrapper</td><td>0</td></tr>
+  <tr><td>user</td><td>included verbatim</td><td>0</td></tr>
+  <tr><td>assistant (text)</td><td>included with chat-template wrapper</td><td><strong>1</strong></td></tr>
+  <tr><td>assistant.tool_calls (function name + JSON args)</td><td>included as tool-call special tokens</td><td><strong>1</strong></td></tr>
+  <tr><td>tool / tool_result</td><td>included (environment observation)</td><td>0</td></tr>
+</table>
+<p>Because the existing TrainableHarborAgent generates assistant tokens by streaming from the SGLang router, it is more
+robust to <strong>build <code>tokens</code> and <code>loss_mask</code> incrementally during generation</strong>
+(as ReTool does) rather than re-tokenizing the ATIF post-hoc, which can introduce subtle whitespace/BPE drift.
+<code>atif_to_sample</code> therefore primarily provides a <em>fallback</em> path for Mode A (third-party agents).</p>
+<div class="warn-box">
+  Gotcha: slime's training-side max length is
+  <code>context_parallel_size * max_tokens_per_gpu</code>; the agent loop must clamp each turn's
+  <code>max_new_tokens</code> to the remaining budget exactly as <code>generate_with_retool.py</code> does — otherwise the
+  partition/batch code can assert or OOM.
+</div>
+</section>
+
+<!-- ====================== 12. ASYNC ====================== -->
+<section id="async">
+<h2>12. Async / scaling notes</h2>
+<ul>
+  <li>Harbor environments are container-bound — start-up can dominate. Use <code>--harbor-cache-built-envs</code> +
+      pre-build per task image at <em>rollout_manager</em> init time (a new <code>RolloutManager.warmup()</code> hook may help).</li>
+  <li>For large datasets (Terminal-Bench-2.0 has hundreds of tasks), pair with <code>train_async.py</code> +
+      <code>fully_async_rollout.py</code> so training can overlap with the long tool-execution tail (similar to APRIL's
+      partial-rollout idea).</li>
+  <li>Per-trial timeouts are critical: enforce <code>asyncio.wait_for</code> at the trial level and return a
+      <code>Sample.Status.ABORTED</code> with <code>reward = 0</code> rather than blocking the rollout step.</li>
+  <li>Network egress: if the agent uses MCP / web tools, route through Harbor's <code>--ae</code> env-var injection and never
+      bake API keys into the image.</li>
+  <li>For multi-GPU policy serving, the SGLang router already load-balances; no Harbor-side change is needed.</li>
+</ul>
+</section>
+
+<!-- ====================== 13. CAVEATS ====================== -->
+<section id="caveats">
+<h2>13. Caveats &amp; open questions</h2>
+<ul>
+  <li><strong>Tokenization fidelity for off-the-shelf agents (Mode A).</strong> When Claude-Code / OpenHands generates text
+      through their own client, we only see the final ATIF. Round-tripping through the trainable tokenizer can mis-align
+      tokens with the original sampler's log-probs. Mode B avoids this entirely; Mode A should constrain the loss to
+      assistant <em>character spans</em> via re-tokenization + a tolerance check.</li>
+  <li><strong>Tool-call special tokens.</strong> Some chat templates (Qwen, GLM) tokenize tool calls into model-specific
+      special tokens; we must use the model's <code>apply_chat_template(tools=...)</code> rather than a hand-rolled Jinja
+      template like ReTool currently does, to preserve compatibility with the policy.</li>
+  <li><strong>Dataset registry licensing.</strong> Harbor's <code>registry.json</code> is large (≈13 MB). We should
+      <em>not</em> vendor it; instead, depend on <code>harbor</code> at runtime and pull from its registry on demand.</li>
+  <li><strong>Reward sparsity.</strong> Many Harbor tasks are pass/fail — combine with shaping
+      (<code>--harbor-reward-shaper-path</code>) such as turn-count or partial-test credit, or use GRPO with large group
+      size to amortise variance.</li>
+  <li><strong>Container resource governance.</strong> When using <code>docker</code> provider co-located with GPUs, set
+      explicit <code>cpus</code>/<code>memory</code> limits in <code>task.toml</code> and via env-pool defaults to avoid
+      starving Megatron actors.</li>
+  <li><strong>Evaluation.</strong> Reuse the same rollout fn with <code>evaluation=True</code> path and the
+      <code>--eval-config</code> machinery to evaluate on held-out Harbor splits with stricter timeouts.</li>
+</ul>
+</section>
+
+<!-- ====================== 14. MILESTONES ====================== -->
+<section id="milestones">
+<h2>14. Phased rollout</h2>
+<table>
+  <tr><th>Phase</th><th>Scope</th><th>Deliverable</th></tr>
+  <tr><td>M1 — Scaffolding</td>
+      <td>Add <code>slime_plugins/harbor/</code> skeleton, arg registration, docs, requirements extras.</td>
+      <td>Importable plugin; <code>--harbor-dataset hello-world</code> enumerates tasks.</td></tr>
+  <tr><td>M2 — Docker env + verifier</td>
+      <td>Implement <code>HarborEnvPool</code> for Docker only, <code>harbor_reward</code> reader.</td>
+      <td>Can run one trial of a fixed agent and read a reward.</td></tr>
+  <tr><td>M3 — TrainableHarborAgent (Mode B)</td>
+      <td>Multi-turn loop talking to SGLang router; per-turn <code>loss_mask</code> construction.</td>
+      <td>End-to-end rollout returning valid <code>Sample</code>s.</td></tr>
+  <tr><td>M4 — GRPO training run</td>
+      <td>Plug into <code>train.py</code>; smoke-train Qwen3-4B on Terminal-Bench-2.0 with 8 rollouts/task.</td>
+      <td>Reward curves in W&amp;B.</td></tr>
+  <tr><td>M5 — Async + scale</td>
+      <td>Wire into <code>train_async.py</code>; CPU placement group; warm-cache env images.</td>
+      <td>≥256 concurrent envs; train/rollout overlap.</td></tr>
+  <tr><td>M6 — Mode A &amp; ATIF eval</td>
+      <td>OpenAI-compat shim (<code>litellm_to_sglang</code>); evaluate third-party agents (Claude-Code, Aider, …) via
+          <code>--eval-config</code>.</td>
+      <td>Apples-to-apples comparison vs. baseline agents.</td></tr>
+  <tr><td>M7 — More providers &amp; benchmarks</td>
+      <td>Daytona / Modal / E2B providers; SWE-Bench, BFCL, GAIA tasks via Harbor adapters.</td>
+      <td>Cross-benchmark RL recipes in <code>examples/harbor/</code>.</td></tr>
+</table>
+</section>
+
+</article>
+</main>
+
+<footer>
+  Companion to <a href="./slime_architecture.html">slime_architecture.html</a>.
+  Sources cited: <code>Ramneet-Singh/slime</code> (this repo) and <code>harbor-framework/harbor</code> (README + AGENTS.md).
+</footer>
+</body>
+</html>
