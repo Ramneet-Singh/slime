@@ -1,0 +1,113 @@
+# PI smoke-run runbook — `examples/tau-bench/run_qwen3_4B.sh`
+
+Operator playbook for running the unmodified tau-bench example on a Prime
+Intellect on-demand pod as a baseline validation of the slime + PI pipeline.
+
+This is a **before-Harbor** baseline. Do not patch in Harbor changes against
+this run; spin a separate branch for that work and compare its curves to the
+ones produced here.
+
+## Run parameters (resolved decisions)
+
+| Knob | Value |
+|---|---|
+| GPUs | 2× H100 80GB, on-demand |
+| Pod image | `slimerl/slime:latest` |
+| Persistent volume | 100 GB, mounted at `/root/persist` |
+| User simulator | OpenAI `gpt-4o-mini` via LiteLLM |
+| `--num-rollout` | 50 |
+| `--save-interval` | 50 (only the final checkpoint is written) |
+| Dynamic sampling filter | `check_reward_nonzero_std` (as-shipped; inflates OpenAI cost 2-3×) |
+| Monitoring | wandb project `slime-tau-bench`, group `qwen3-4B-pi-smoke` |
+| Expected cost | ~$90–160 total (GPU ~$60–90 + OpenAI ~$30–70) |
+
+## 1. Launching the PI pod
+
+Provision the pod from the [Prime Intellect dashboard](https://app.primeintellect.ai/)
+or via the `prime` CLI. The required attributes:
+
+- **GPU**: 2× H100 80GB, on-demand (not spot — preemption is not worth a ~30 %
+  discount on a single overnight run)
+- **Image**: `slimerl/slime:latest`
+- **Persistent volume**: 100 GB, mounted at `/root/persist`
+- **Root disk**: ≥ 200 GB (the image plus build artifacts is large)
+- **SSH access**: enabled, with your public key
+
+> The `prime` CLI flag surface changes from release to release. Confirm the
+> exact flag spellings against `prime --help` on the version you have
+> installed before pasting a command into a runbook update. The web UI is
+> the simplest path for a one-off pod.
+
+## 2. First-time setup on the pod
+
+After SSHing in:
+
+```bash
+export OPENAI_API_KEY=sk-...        # your OpenAI key (gpt-4o-mini)
+export WANDB_API_KEY=...             # your wandb key
+# Optional override of the wandb project (defaults to slime-tau-bench):
+# export WANDB_PROJECT=slime-tau-bench
+
+bash /root/slime/scripts/pi_bootstrap.sh
+bash /root/slime/scripts/pi_launch_train.sh
+```
+
+`pi_bootstrap.sh` is idempotent — it clones slime + the JD-ETH tau-bench
+fork, downloads the Qwen3-4B HF checkpoint, runs the mcore conversion, and
+generates the mock train/dev jsonl files, all under `/root/persist/`. Each
+step skips itself if its artifact is already present.
+
+`pi_launch_train.sh` starts the training run inside tmux session `slime-tau`
+and tees stdout/stderr to `/root/persist/logs/run-<timestamp>.log`. Reattach
+with `tmux a -t slime-tau`. Detach again with `Ctrl-b d`.
+
+## 3. Monitoring
+
+- **Wandb**: project `slime-tau-bench`, group `qwen3-4B-pi-smoke`.
+  Watch:
+  - **Mean reward** — should start trending up by iteration 20–25.
+  - **`retail-dev` eval reward** — improvement typically shows by iteration
+    30–40. Eval runs every 5 iterations (`--eval-interval 5`).
+  - **Rollout token throughput** — if it cliff-drops, the user-sim API is
+    likely rate-limited; check OpenAI usage dashboard.
+- **Tmux log**: `tail -f /root/persist/logs/run-*.log` from a second SSH
+  session, or reattach with `tmux a -t slime-tau`.
+- **GPU utilization**: `nvidia-smi -l 5` from a second SSH session — both
+  GPUs should stay near 100 % during the actor phase.
+
+## 4. Recovery from pod restart
+
+The on-demand pod itself shouldn't preempt, but if you stop/start it or it
+gets force-recycled:
+
+1. Re-SSH and re-export `OPENAI_API_KEY` and `WANDB_API_KEY`.
+2. `bash /root/slime/scripts/pi_bootstrap.sh` — idempotent; it will no-op on
+   already-present artifacts.
+3. `bash /root/slime/scripts/pi_launch_train.sh` — slime resumes from the
+   last save in `/root/persist/Qwen3-4B-Instruct-2507_slime/` because
+   `--load` and `--save` point to the same directory.
+
+Note: with `--save-interval 50` and `--num-rollout 50`, only the final
+checkpoint is written. A restart before iteration 50 means restarting from
+the original HF checkpoint, so prefer keeping the pod up for the full run.
+
+## 5. Tear-down
+
+When the run is done and you've pulled what you need off the volume:
+
+1. Stop the pod from the PI dashboard.
+2. The 100 GB persistent volume costs roughly $10/month if kept; either
+   destroy it or keep it for the next iteration (the bootstrap will reuse
+   the cached HF download, mcore conversion, and mock data).
+
+## 6. Cost ceiling and circuit-breakers
+
+Investigate before continuing if any of these hold:
+
+- **GPU clock > 12 h** on a single run (something is hung; the smoke run
+  should complete in well under that).
+- **OpenAI spend > $100** for this single run (the `check_reward_nonzero_std`
+  filter inflates rollout count and is the most likely culprit; user has
+  been warned, but a number significantly above $70 is anomalous).
+- **Total cost projection > $160** — stop and reassess parameters before
+  burning more.

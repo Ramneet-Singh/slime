@@ -27,18 +27,18 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/../../scripts/models/qwen3-4B-Instruct-2507.sh"
 
 CKPT_ARGS=(
-   --hf-checkpoint /root/Qwen3-4B-Instruct-2507/
-   --ref-load /root/Qwen3-4B-Instruct-2507_torch_dist/
-   --load /root/Qwen3-4B-Instruct-2507_slime/
-   --save /root/Qwen3-4B-Instruct-2507_slime/
-   --save-interval 20
+   --hf-checkpoint /root/persist/Qwen3-4B-Instruct-2507/
+   --ref-load /root/persist/Qwen3-4B-Instruct-2507_torch_dist/
+   --load /root/persist/Qwen3-4B-Instruct-2507_slime/
+   --save /root/persist/Qwen3-4B-Instruct-2507_slime/
+   --save-interval 50
 )
 
 ROLLOUT_ARGS=(
-   --prompt-data /root/tau-bench/retail_train_tasks.jsonl
+   --prompt-data /root/persist/tau-bench/retail_train_tasks.jsonl
    --input-key index
    --rollout-shuffle
-   --num-rollout 500
+   --num-rollout 50
    --rollout-batch-size 32
    --n-samples-per-prompt 8
    --rollout-max-response-len 1024
@@ -50,7 +50,7 @@ ROLLOUT_ARGS=(
 
 EVAL_ARGS=(
    --eval-interval 5
-   --eval-prompt-data retail-dev /root/tau-bench/retail_dev_tasks.jsonl
+   --eval-prompt-data retail-dev /root/persist/tau-bench/retail_dev_tasks.jsonl
    --n-samples-per-eval-prompt 1
    --eval-max-response-len 1024
    --eval-top-k 1
@@ -89,11 +89,13 @@ OPTIMIZER_ARGS=(
    --adam-beta2 0.98
 )
 
+: "${WANDB_API_KEY:?WANDB_API_KEY must be set (wandb monitoring is required for the PI smoke run)}"
+
 WANDB_ARGS=(
-   # --use-wandb
-   # --wandb-project slime-tau-bench
-   # --wandb-group qwen3-4B
-   # --wandb-key ${WANDB_KEY}
+   --use-wandb
+   --wandb-project ${WANDB_PROJECT:-slime-tau-bench}
+   --wandb-group qwen3-4B-pi-smoke
+   --wandb-key ${WANDB_API_KEY}
 )
 
 SGLANG_ARGS=(
