@@ -11,7 +11,7 @@ ones produced here.
 
 | Knob | Value |
 |---|---|
-| GPUs | 2× H100 80GB, on-demand |
+| GPUs | 2× H100 80GB, on-demand (2× A100 80GB also accepted — see notes below) |
 | Pod image | `slimerl/slime:latest` |
 | Persistent volume | 100 GB, mounted at `/root/persist` |
 | User simulator | OpenAI `gpt-4o-mini` via LiteLLM |
@@ -27,7 +27,19 @@ Provision the pod from the [Prime Intellect dashboard](https://app.primeintellec
 or via the `prime` CLI. The required attributes:
 
 - **GPU**: 2× H100 80GB, on-demand (not spot — preemption is not worth a ~30 %
-  discount on a single overnight run)
+  discount on a single overnight run).
+  - **2× A100 80GB on-demand is an accepted alternative** if H100 capacity is
+    unavailable or noticeably more expensive on the day. No code changes
+    required — the run uses no FP8 / TransformerEngine / Hopper-only features.
+    Caveats:
+    - **80GB only, not 40GB** — colocated SGLang + actor on Qwen3-4B with
+      TP=2 and `--max-tokens-per-gpu 9216` is tight at 40GB.
+    - Expect **~1.5–2× wall-clock vs H100** for BF16. Per-hour pricing is
+      lower, so total GPU cost lands roughly comparable; the $160 ceiling
+      below still holds.
+    - **Prefer SXM4 over PCIe** if PI lets you pick — PCIe A100 pods may
+      lack NVLink between the two cards, which hurts rollout sync
+      throughput (the launch script auto-detects and continues either way).
 - **Image**: `slimerl/slime:latest`
 - **Persistent volume**: 100 GB, mounted at `/root/persist`
 - **Root disk**: ≥ 200 GB (the image plus build artifacts is large)
