@@ -2,7 +2,7 @@
 #
 # pi_bootstrap.sh — one-shot setup for the tau-bench smoke run on a fresh
 # Prime Intellect pod (image: slimerl/slime:latest, 2x H100 80GB, 100GB
-# persistent volume mounted at /root/persist).
+# persistent volume mounted at /data).
 #
 # Idempotent: safe to re-run if the pod restarts. Each step skips itself if
 # the artifact it produces already exists on the persistent volume.
@@ -16,7 +16,7 @@ set -euo pipefail
 : "${OPENAI_API_KEY:?OPENAI_API_KEY must be exported before running this script}"
 : "${WANDB_API_KEY:?WANDB_API_KEY must be exported before running this script}"
 
-PERSIST=/root/persist
+PERSIST=/data
 if ! mountpoint -q "${PERSIST}" && [[ ! -d "${PERSIST}" ]]; then
   echo "ERROR: ${PERSIST} is neither a mountpoint nor an existing directory." >&2
   echo "       Provision a persistent volume mounted at ${PERSIST} before running." >&2

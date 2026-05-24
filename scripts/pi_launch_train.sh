@@ -13,7 +13,7 @@ set -euo pipefail
 : "${WANDB_API_KEY:?WANDB_API_KEY must be exported before running this script}"
 
 SESSION=slime-tau
-PERSIST=/root/persist
+PERSIST=/data
 SLIME_DIR=/root/slime
 RUN_SCRIPT="${SLIME_DIR}/examples/tau-bench/run_qwen3_4B.sh"
 LOG_DIR="${PERSIST}/logs"

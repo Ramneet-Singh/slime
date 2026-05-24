@@ -27,15 +27,15 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/../../scripts/models/qwen3-4B-Instruct-2507.sh"
 
 CKPT_ARGS=(
-   --hf-checkpoint /root/persist/Qwen3-4B-Instruct-2507/
-   --ref-load /root/persist/Qwen3-4B-Instruct-2507_torch_dist/
-   --load /root/persist/Qwen3-4B-Instruct-2507_slime/
-   --save /root/persist/Qwen3-4B-Instruct-2507_slime/
+   --hf-checkpoint /data/Qwen3-4B-Instruct-2507/
+   --ref-load /data/Qwen3-4B-Instruct-2507_torch_dist/
+   --load /data/Qwen3-4B-Instruct-2507_slime/
+   --save /data/Qwen3-4B-Instruct-2507_slime/
    --save-interval 50
 )
 
 ROLLOUT_ARGS=(
-   --prompt-data /root/persist/tau-bench/retail_train_tasks.jsonl
+   --prompt-data /data/tau-bench/retail_train_tasks.jsonl
    --input-key index
    --rollout-shuffle
    --num-rollout 50
@@ -50,7 +50,7 @@ ROLLOUT_ARGS=(
 
 EVAL_ARGS=(
    --eval-interval 5
-   --eval-prompt-data retail-dev /root/persist/tau-bench/retail_dev_tasks.jsonl
+   --eval-prompt-data retail-dev /data/tau-bench/retail_dev_tasks.jsonl
    --n-samples-per-eval-prompt 1
    --eval-max-response-len 1024
    --eval-top-k 1

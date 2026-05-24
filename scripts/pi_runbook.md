@@ -13,7 +13,7 @@ ones produced here.
 |---|---|
 | GPUs | 2× H100 80GB, on-demand (2× A100 80GB also accepted — see notes below) |
 | Pod image | `slimerl/slime:latest` |
-| Persistent volume | 100 GB, mounted at `/root/persist` |
+| Persistent volume | 100 GB, mounted at `/data` |
 | User simulator | OpenAI `gpt-4o-mini` via LiteLLM |
 | `--num-rollout` | 50 |
 | `--save-interval` | 50 (only the final checkpoint is written) |
@@ -41,7 +41,7 @@ or via the `prime` CLI. The required attributes:
       lack NVLink between the two cards, which hurts rollout sync
       throughput (the launch script auto-detects and continues either way).
 - **Image**: `slimerl/slime:latest`
-- **Persistent volume**: 100 GB, mounted at `/root/persist`
+- **Persistent volume**: 100 GB, mounted at `/data`
 - **Root disk**: ≥ 200 GB (the image plus build artifacts is large)
 - **SSH access**: enabled, with your public key
 
@@ -66,11 +66,11 @@ bash /root/slime/scripts/pi_launch_train.sh
 
 `pi_bootstrap.sh` is idempotent — it clones slime + the JD-ETH tau-bench
 fork, downloads the Qwen3-4B HF checkpoint, runs the mcore conversion, and
-generates the mock train/dev jsonl files, all under `/root/persist/`. Each
+generates the mock train/dev jsonl files, all under `/data/`. Each
 step skips itself if its artifact is already present.
 
 `pi_launch_train.sh` starts the training run inside tmux session `slime-tau`
-and tees stdout/stderr to `/root/persist/logs/run-<timestamp>.log`. Reattach
+and tees stdout/stderr to `/data/logs/run-<timestamp>.log`. Reattach
 with `tmux a -t slime-tau`. Detach again with `Ctrl-b d`.
 
 ## 3. Monitoring
@@ -82,7 +82,7 @@ with `tmux a -t slime-tau`. Detach again with `Ctrl-b d`.
     30–40. Eval runs every 5 iterations (`--eval-interval 5`).
   - **Rollout token throughput** — if it cliff-drops, the user-sim API is
     likely rate-limited; check OpenAI usage dashboard.
-- **Tmux log**: `tail -f /root/persist/logs/run-*.log` from a second SSH
+- **Tmux log**: `tail -f /data/logs/run-*.log` from a second SSH
   session, or reattach with `tmux a -t slime-tau`.
 - **GPU utilization**: `nvidia-smi -l 5` from a second SSH session — both
   GPUs should stay near 100 % during the actor phase.
@@ -96,7 +96,7 @@ gets force-recycled:
 2. `bash /root/slime/scripts/pi_bootstrap.sh` — idempotent; it will no-op on
    already-present artifacts.
 3. `bash /root/slime/scripts/pi_launch_train.sh` — slime resumes from the
-   last save in `/root/persist/Qwen3-4B-Instruct-2507_slime/` because
+   last save in `/data/Qwen3-4B-Instruct-2507_slime/` because
    `--load` and `--save` point to the same directory.
 
 Note: with `--save-interval 50` and `--num-rollout 50`, only the final
