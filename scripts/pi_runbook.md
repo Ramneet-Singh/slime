@@ -13,7 +13,7 @@ ones produced here.
 |---|---|
 | GPUs | 2× H100 80GB, on-demand (2× A100 80GB also accepted — see notes below) |
 | Pod image | `ramneetsingh/slime-ssh:latest` (thin SSH wrapper over `slimerl/slime:latest` — see § 1a) |
-| Persistent volume | 100 GB, mounted at `/data` |
+| Working dir | `/workspace` on the **ephemeral root disk** (no persistent volume) |
 | User simulator | OpenAI `gpt-4o-mini` via LiteLLM |
 | `--num-rollout` | 50 |
 | `--save-interval` | 50 (only the final checkpoint is written) |
@@ -47,9 +47,16 @@ or via the `prime` CLI. The required attributes:
   paste the contents of `scripts/pi-image/start.sh` verbatim. PI populates
   `$PUBLIC_KEY` and `$SSH_PORT` at boot; the script wires them into sshd
   and execs sshd as PID 1.
-- **Persistent volume**: 100 GB, mounted at `/data`
-- **Root disk**: 100–150 GB (the image + JIT/tmp caches are the dominant
-  consumers; the persistent volume holds model + checkpoints).
+- **Persistent volume**: not used for this run. Everything (model download,
+  mcore conversion, checkpoint, logs) lives in `/workspace` on the ephemeral
+  root disk. **Consequence**: if the pod restarts, all of it is lost and
+  bootstrap must redo the model download (~5-15 min) and mcore conversion
+  (~10-30 min). For a one-shot smoke run this is the pragmatic choice. To
+  add persistence later, attach a volume mounted at `/workspace` — no
+  script change required.
+- **Root disk**: 150–200 GB. With no persistent volume, the root disk also
+  has to hold the HF model (~8 GB), mcore conversion (~8 GB), final
+  checkpoint, and logs — bump the recommendation accordingly.
 - **SSH access**: enabled, with your public key.
 
 > The `prime` CLI flag surface changes from release to release. Confirm the
@@ -89,11 +96,11 @@ bash /root/slime/scripts/pi_launch_train.sh
 
 `pi_bootstrap.sh` is idempotent — it clones slime + the JD-ETH tau-bench
 fork, downloads the Qwen3-4B HF checkpoint, runs the mcore conversion, and
-generates the mock train/dev jsonl files, all under `/data/`. Each
+generates the mock train/dev jsonl files, all under `/workspace/`. Each
 step skips itself if its artifact is already present.
 
 `pi_launch_train.sh` starts the training run inside tmux session `slime-tau`
-and tees stdout/stderr to `/data/logs/run-<timestamp>.log`. Reattach
+and tees stdout/stderr to `/workspace/logs/run-<timestamp>.log`. Reattach
 with `tmux a -t slime-tau`. Detach again with `Ctrl-b d`.
 
 ## 3. Monitoring
@@ -105,35 +112,35 @@ with `tmux a -t slime-tau`. Detach again with `Ctrl-b d`.
     30–40. Eval runs every 5 iterations (`--eval-interval 5`).
   - **Rollout token throughput** — if it cliff-drops, the user-sim API is
     likely rate-limited; check OpenAI usage dashboard.
-- **Tmux log**: `tail -f /data/logs/run-*.log` from a second SSH
+- **Tmux log**: `tail -f /workspace/logs/run-*.log` from a second SSH
   session, or reattach with `tmux a -t slime-tau`.
 - **GPU utilization**: `nvidia-smi -l 5` from a second SSH session — both
   GPUs should stay near 100 % during the actor phase.
 
 ## 4. Recovery from pod restart
 
-The on-demand pod itself shouldn't preempt, but if you stop/start it or it
-gets force-recycled:
+There's no persistent storage in this configuration, so a pod stop/start
+loses **everything** in `/workspace` — model, mcore conversion, mock data,
+checkpoint, logs. After a restart you have to start over from scratch:
+re-SSH, re-export env vars, re-run bootstrap (which re-downloads + re-converts
+the model — ~15–45 min), and re-launch training from iteration 0.
 
-1. Re-SSH and re-export `OPENAI_API_KEY` and `WANDB_API_KEY`.
-2. `bash /root/slime/scripts/pi_bootstrap.sh` — idempotent; it will no-op on
-   already-present artifacts.
-3. `bash /root/slime/scripts/pi_launch_train.sh` — slime resumes from the
-   last save in `/data/Qwen3-4B-Instruct-2507_slime/` because
-   `--load` and `--save` point to the same directory.
+With `--save-interval 50` and `--num-rollout 50`, the only checkpoint is
+written at the very end, so there's no intermediate save to resume from
+anyway. Best practice: keep the pod up for the full run, and grab the
+final checkpoint off the pod (e.g., `scp` or HF Hub upload) **before**
+tearing it down.
 
-Note: with `--save-interval 50` and `--num-rollout 50`, only the final
-checkpoint is written. A restart before iteration 50 means restarting from
-the original HF checkpoint, so prefer keeping the pod up for the full run.
+If you want restart resilience later, attach a persistent volume mounted at
+`/workspace` when creating the pod — the bootstrap will treat it the same
+way and skip re-downloading artifacts already present.
 
 ## 5. Tear-down
 
-When the run is done and you've pulled what you need off the volume:
-
-1. Stop the pod from the PI dashboard.
-2. The 100 GB persistent volume costs roughly $10/month if kept; either
-   destroy it or keep it for the next iteration (the bootstrap will reuse
-   the cached HF download, mcore conversion, and mock data).
+When the run is done and you've pulled the final checkpoint off the pod
+(e.g., `scp -P <port> root@<host>:/workspace/Qwen3-4B-Instruct-2507_slime/* .`
+or upload directly to HF Hub from the pod), stop the pod from the PI
+dashboard. There's no persistent volume to clean up in this configuration.
 
 ## 6. Cost ceiling and circuit-breakers
 
