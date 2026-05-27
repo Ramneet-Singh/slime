@@ -12,7 +12,7 @@ ones produced here.
 | Knob | Value |
 |---|---|
 | GPUs | 2× H100 80GB, on-demand (2× A100 80GB also accepted — see notes below) |
-| Pod image | `slimerl/slime:latest` |
+| Pod image | `ramneetsingh/slime-ssh:latest` (thin SSH wrapper over `slimerl/slime:latest` — see § 1a) |
 | Persistent volume | 100 GB, mounted at `/data` |
 | User simulator | OpenAI `gpt-4o-mini` via LiteLLM |
 | `--num-rollout` | 50 |
@@ -40,15 +40,38 @@ or via the `prime` CLI. The required attributes:
     - **Prefer SXM4 over PCIe** if PI lets you pick — PCIe A100 pods may
       lack NVLink between the two cards, which hurts rollout sync
       throughput (the launch script auto-detects and continues either way).
-- **Image**: `slimerl/slime:latest`
+- **Image**: `ramneetsingh/slime-ssh:latest` (the SSH-enabled wrapper — see
+  § 1a below; the upstream `slimerl/slime:latest` lacks `openssh-server` and
+  cannot be SSHed into directly on PI).
+- **Container Start Script** (Advanced section of the pod create form):
+  paste the contents of `scripts/pi-image/start.sh` verbatim. PI populates
+  `$PUBLIC_KEY` and `$SSH_PORT` at boot; the script wires them into sshd
+  and execs sshd as PID 1.
 - **Persistent volume**: 100 GB, mounted at `/data`
-- **Root disk**: ≥ 200 GB (the image plus build artifacts is large)
-- **SSH access**: enabled, with your public key
+- **Root disk**: 100–150 GB (the image + JIT/tmp caches are the dominant
+  consumers; the persistent volume holds model + checkpoints).
+- **SSH access**: enabled, with your public key.
 
 > The `prime` CLI flag surface changes from release to release. Confirm the
 > exact flag spellings against `prime --help` on the version you have
 > installed before pasting a command into a runbook update. The web UI is
 > the simplest path for a one-off pod.
+
+## 1a. Build & push the PI image (one-time)
+
+The wrapper Dockerfile lives at `scripts/pi-image/Dockerfile`. It does
+nothing more than add `openssh-server` and PI's required sshd config on
+top of the upstream slime image. Build it once, push to your registry, and
+reuse the resulting tag for every future PI run:
+
+```bash
+docker build -t ramneetsingh/slime-ssh:latest scripts/pi-image
+docker push ramneetsingh/slime-ssh:latest
+```
+
+Rebuild only if the upstream `slimerl/slime:latest` digest changes in a way
+that matters to you (security update, dependency bump). The image is
+intentionally a single thin layer so a rebuild is cheap.
 
 ## 2. First-time setup on the pod
 
