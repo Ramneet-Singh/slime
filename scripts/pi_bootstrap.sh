@@ -54,11 +54,18 @@ if [[ ! -d "${TAU_DIR}/.git" ]]; then
 fi
 ( cd "${TAU_DIR}" && pip install -e . --no-deps )
 
-# 3. HF model download
+# 3. HF model download. The slimerl/slime image ships huggingface_hub 1.x,
+#    where `huggingface-cli` is deprecated and exits non-zero (which kills
+#    `set -e` scripts). Use the new `hf` CLI; fall back to the old one only
+#    if `hf` is somehow missing.
 if [[ ! -f "${HF_DIR}/config.json" ]]; then
   echo "[bootstrap] downloading Qwen3-4B-Instruct-2507 to ${HF_DIR}"
-  huggingface-cli download Qwen/Qwen3-4B-Instruct-2507 \
-    --local-dir "${HF_DIR}" --local-dir-use-symlinks False
+  if command -v hf >/dev/null 2>&1; then
+    hf download Qwen/Qwen3-4B-Instruct-2507 --local-dir "${HF_DIR}"
+  else
+    huggingface-cli download Qwen/Qwen3-4B-Instruct-2507 \
+      --local-dir "${HF_DIR}" --local-dir-use-symlinks False
+  fi
 else
   echo "[bootstrap] HF checkpoint already present at ${HF_DIR}"
 fi
