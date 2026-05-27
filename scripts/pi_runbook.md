@@ -11,7 +11,7 @@ ones produced here.
 
 | Knob | Value |
 |---|---|
-| GPUs | 2× H100 80GB, on-demand (2× A100 80GB also accepted — see notes below) |
+| GPUs | 1× H200 141GB, on-demand (single-GPU config; see § 1 for alternatives) |
 | Pod image | `ramneetsingh/slime-ssh:latest` (thin SSH wrapper over `slimerl/slime:latest` — see § 1a) |
 | Working dir | `/workspace` on the **ephemeral root disk** (no persistent volume) |
 | User simulator | OpenAI `gpt-4o-mini` via LiteLLM |
@@ -26,20 +26,20 @@ ones produced here.
 Provision the pod from the [Prime Intellect dashboard](https://app.primeintellect.ai/)
 or via the `prime` CLI. The required attributes:
 
-- **GPU**: 2× H100 80GB, on-demand (not spot — preemption is not worth a ~30 %
-  discount on a single overnight run).
-  - **2× A100 80GB on-demand is an accepted alternative** if H100 capacity is
-    unavailable or noticeably more expensive on the day. No code changes
-    required — the run uses no FP8 / TransformerEngine / Hopper-only features.
-    Caveats:
-    - **80GB only, not 40GB** — colocated SGLang + actor on Qwen3-4B with
-      TP=2 and `--max-tokens-per-gpu 9216` is tight at 40GB.
-    - Expect **~1.5–2× wall-clock vs H100** for BF16. Per-hour pricing is
-      lower, so total GPU cost lands roughly comparable; the $160 ceiling
-      below still holds.
-    - **Prefer SXM4 over PCIe** if PI lets you pick — PCIe A100 pods may
-      lack NVLink between the two cards, which hurts rollout sync
-      throughput (the launch script auto-detects and continues either way).
+- **GPU**: 1× H200 141GB, on-demand. The run script is configured for
+  single-GPU (`NUM_GPUS=1`, `--tensor-model-parallel-size 1`); the H200's
+  141GB comfortably holds Qwen3-4B + Adam + ref model + colocated SGLang
+  KV cache without sharding gymnastics.
+  - **Alternative configs** (require editing `examples/tau-bench/run_qwen3_4B.sh`):
+    - **2× H100 80GB**: set `NUM_GPUS=2` and `--tensor-model-parallel-size 2`.
+      Faster wall-clock (~1.3-1.7× faster than 1× H200), but ~2× GPU cost.
+    - **1× H100 80GB**: tight on memory (4B + Adam + ref + sglang ≈ 85 GB on
+      80 GB budget). Workable only with optimizer CPU-offload or dropping
+      the ref model; expect OOM debug time.
+    - **1× B300 262 GB**: enormous memory headroom but Blackwell (sm_100)
+      requires CUDA ≥ 12.8 — the `slimerl/slime:latest` base may not
+      support Blackwell without a rebuild. Not recommended unless you've
+      verified compatibility.
 - **Image**: `ramneetsingh/slime-ssh:latest` (the SSH-enabled wrapper — see
   § 1a below; the upstream `slimerl/slime:latest` lacks `openssh-server` and
   cannot be SSHed into directly on PI).
