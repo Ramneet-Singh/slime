@@ -54,6 +54,11 @@ if [[ ! -d "${TAU_DIR}/.git" ]]; then
 fi
 ( cd "${TAU_DIR}" && pip install -e . --no-deps )
 
+# tau-bench's runtime deps that we don't want to pull via the full `-e .`
+# install (which would touch slime's pinned packages). litellm + openai are
+# what the JD-ETH fork's user-simulator path hard-imports.
+pip install litellm openai
+
 # 3. HF model download. The slimerl/slime image ships huggingface_hub 1.x,
 #    where `huggingface-cli` is deprecated and exits non-zero (which kills
 #    `set -e` scripts). Use the new `hf` CLI; fall back to the old one only
